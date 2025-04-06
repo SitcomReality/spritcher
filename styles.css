@@ -53,20 +53,14 @@ section {
     pointer-events: none;
 }
 
-#debug-overlays,
-#editing-overlays { 
+#debug-overlays {
     position: absolute;
     top: 0;
     left: 0;
     width: 0; 
     height: 0; 
     transform-origin: 0 0;
-    overflow: visible; 
-    pointer-events: none; 
-}
-
-#editing-overlays > * { 
-    pointer-events: auto;
+    overflow: hidden;
 }
 
 .zoom-controls {
@@ -213,12 +207,10 @@ select {
     cursor: pointer; 
 }
 
-.selected-box-highlight {
-    position: absolute;
-    box-sizing: border-box;
-    border: 3px solid limegreen;
-    box-shadow: 0 0 8px rgba(50, 205, 50, 0.8);
-    pointer-events: none; 
+.editable-bbox.selected {
+    border-color: limegreen;
+    border-width: 3px;
+    box-shadow: 0 0 5px rgba(0, 255, 0, 0.7);
 }
 
 .ccl-label {
@@ -230,22 +222,6 @@ select {
     border-radius: 2px;
     pointer-events: none;
 }
-
-.resize-handle {
-    position: absolute;
-    width: 10px;
-    height: 10px;
-    background-color: yellow;
-    border: 1px solid black;
-    box-sizing: border-box;
-    pointer-events: auto; 
-    transform: translate(-50%, -50%);
-}
-
-.resize-handle.tl, .resize-handle.br { cursor: nwse-resize; }
-.resize-handle.tr, .resize-handle.bl { cursor: nesw-resize; }
-.resize-handle.t, .resize-handle.b { cursor: ns-resize; }
-.resize-handle.l, .resize-handle.r { cursor: ew-resize; }
 
 #edit-toolbar {
     display: flex;
