@@ -4,7 +4,7 @@ import { getGrayscaleImageData, getThresholdedImageData, getAdaptiveThresholdedI
 import { findBlobs } from 'blob-detector';
 import { clearGeneratedSpritesheet } from 'spritesheet-controller';
 import { clearOverlays, updateDebugView, updateDebugOverlays } from 'debug-controller';
-import { updateEditModeUI, setEditModeAndClearSelection } from 'editing-controller';
+import { updateEditModeUI, setEditModeAndClearSelection } from 'mode-controller';
 import { disableAllControls } from 'ui-controller'; // Assuming disable logic stays in main UI controller
 
 // Utility to pause execution slightly to allow UI updates
@@ -139,7 +139,6 @@ export function invalidateProcessing(keepThresholded = false) {
 
     console.log(`Processing results invalidated ${keepThresholded ? '(keeping thresholded)' : '(full)'}.`);
 }
-
 
 export function clearProcessingOnLoad() {
     clearProcessingResultsState();
