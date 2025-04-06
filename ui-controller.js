@@ -1,16 +1,18 @@
 import { loadImage, getImageDataFromCanvas } from 'image-loader';
 import { elements, populateElements } from 'dom-elements';
 import { appState, setOriginalImage, clearFullAppState, resetThresholdSettings } from 'state';
-import { initSettingsController, updateThresholdSettingsUI, updateMinSizeUI, syncThresholdSettingsToState } from 'settings-controller';
+import { initSettingsController, updateThresholdSettingsUI, updateMinSizeUI, syncThresholdSettingsToState, syncNumberInputsToSliders } from 'settings-controller';
 import { initProcessingController, clearProcessingOnLoad } from 'processing-controller';
 import { initSpritesheetController, clearGeneratedSpritesheet } from 'spritesheet-controller';
 import { initViewportController, resetZoomPanStateAndView, updateImageDisplayTransform, updateOverlayContainerDimensions, clearTransforms } from 'viewport-controller';
 import { initEditingController, updateEditModeUI, resetEditingOnLoad } from 'editing-controller';
 import { initDebugController, updateDebugView, updateDebugOverlays, clearOverlays } from 'debug-controller';
+import { initThemeController } from 'theme-controller';
 
 // --- Initialization ---
 export function initUI() {
     populateElements(); // Find all DOM elements first
+    initThemeController(); // Initialize theme switcher first
 
     // Initialize controllers (which add their specific event listeners)
     initSettingsController();
@@ -51,6 +53,7 @@ async function handleImageUpload() {
 
         elements.processingStatusDiv.textContent = 'Image loaded. Adjust settings and click "Detect Sprites".';
         syncThresholdSettingsToState(); // Ensure UI reflects potentially loaded settings
+        syncNumberInputsToSliders(); // Sync number inputs to sliders
         updateMinSizeUI(); // Ensure min size UI reflects initial value
         disableAllControls(false); // Enable controls now that image is loaded
         elements.editingToolsSection.style.display = 'none'; // Hide editing tools initially
@@ -75,9 +78,11 @@ export function disableAllControls(disabled) {
     // Settings Section (individual disable logic handled in settings-controller)
     elements.thresholdTypeSelect.disabled = processing || !imageLoaded;
     elements.thresholdSlider.disabled = processing || !imageLoaded || appState.currentThresholdSettings.type !== 'manual';
+    elements.thresholdNumberInput.disabled = processing || !imageLoaded || appState.currentThresholdSettings.type !== 'manual';
     elements.adaptiveBlocksizeInput.disabled = processing || !imageLoaded || !appState.currentThresholdSettings.type.startsWith('adaptive-');
     elements.adaptiveCInput.disabled = processing || !imageLoaded || !appState.currentThresholdSettings.type.startsWith('adaptive-');
     elements.minSizeSlider.disabled = processing || !imageLoaded;
+    elements.minSizeNumberInput.disabled = processing || !imageLoaded;
     elements.debugViewCheckboxes.forEach(cb => cb.disabled = processing || !imageLoaded);
     elements.debugOverlayCheckboxes.forEach(cb => cb.disabled = processing || !imageLoaded);
 
@@ -86,13 +91,14 @@ export function disableAllControls(disabled) {
 
     // Editing Section Buttons (specific states handled by editing-controller)
     // General disabling during processing or if no image
-    elements.editModeButtons.forEach(button => button.disabled = processing || !imageLoaded);
+    elements.editModeButtons.forEach(button => button.disabled = processing || !imageLoaded || button.dataset.mode === 'split' || button.dataset.mode === 'merge');
+    // Specific enable/disable logic for edit/delete buttons is in updateEditModeUI
 
     // Spritesheet Section
-    elements.generateSpritesheetButton.disabled = processing || !imageLoaded;
-    elements.gridColsInput.disabled = processing || !imageLoaded;
-    elements.paddingInput.disabled = processing || !imageLoaded;
-    elements.alignmentSelect.disabled = processing || !imageLoaded;
+    elements.generateSpritesheetButton.disabled = processing || !imageLoaded || !appState.detectedBlobs || appState.detectedBlobs.length === 0;
+    elements.gridColsInput.disabled = processing || !imageLoaded || !appState.detectedBlobs || appState.detectedBlobs.length === 0;
+    elements.paddingInput.disabled = processing || !imageLoaded || !appState.detectedBlobs || appState.detectedBlobs.length === 0;
+    elements.alignmentSelect.disabled = processing || !imageLoaded || !appState.detectedBlobs || appState.detectedBlobs.length === 0;
     // Download button disable logic is more complex (depends on generation)
     elements.downloadSpritesheetButton.disabled = processing || !imageLoaded || !appState.generatedSpritesheetCanvas;
 
@@ -127,6 +133,7 @@ function clearStateBeforeLoad() {
     resetThresholdSettings(); // Reset state first
     syncThresholdSettingsToState(); // Update UI from state
     if(elements.minSizeSlider) elements.minSizeSlider.value = 10; // Default from HTML
+    syncNumberInputsToSliders(); // Sync number inputs too
     updateMinSizeUI();
 
     // Reset other UI areas
@@ -134,8 +141,12 @@ function clearStateBeforeLoad() {
     resetEditingOnLoad(); // Resets editing mode, selection, status text, visibility
     clearGeneratedSpritesheet(); // Clears spritesheet preview and disables download
 
-    elements.processingStatusDiv.textContent = 'Upload an image to start.';
+    elements.processingStatusDiv.textContent = 'Upload an image and adjust settings to start.';
     if (elements.imageUploadInput) elements.imageUploadInput.value = ''; // Clear file input selection
+
+    // Reset Debug Checkboxes
+    elements.debugViewCheckboxes.forEach(cb => cb.checked = false);
+    elements.debugOverlayCheckboxes.forEach(cb => cb.checked = false);
 
     disableAllControls(true); // Disable almost everything initially
     elements.imageUploadInput.disabled = false; // Re-enable upload button

@@ -1,6 +1,9 @@
 // --- DOM Element References ---
 export const elements = {
+    appContainer: null, // Added for main container styling access
+    themeToggleButton: null, // Added
     imageUploadInput: null,
+    imageUploadLabel: null, // Added potentially
     imagePreviewCanvas: null,
     imagePreviewContainer: null,
     debugOverlaysContainer: null,
@@ -8,11 +11,13 @@ export const elements = {
     manualThresholdSettingsDiv: null,
     adaptiveThresholdSettingsDiv: null,
     thresholdSlider: null,
-    thresholdValueSpan: null,
+    // thresholdValueSpan: null, // Removed, replaced by number input
+    thresholdNumberInput: null, // Added
     adaptiveBlocksizeInput: null,
     adaptiveCInput: null,
     minSizeSlider: null,
-    minSizeValueSpan: null,
+    // minSizeValueSpan: null, // Removed, replaced by number input
+    minSizeNumberInput: null, // Added
     debugViewCheckboxes: null, // Collection
     debugOverlayCheckboxes: null, // Collection
     showGrayscaleCheckbox: null,
@@ -33,12 +38,15 @@ export const elements = {
     editingToolsSection: null,
     editToolbar: null,
     editModeButtons: null, // Collection
-    deleteSelectedButton: null, // Added
+    deleteSelectedButton: null,
     editingStatusDiv: null
 };
 
 export function populateElements() {
+    elements.appContainer = document.querySelector('.app-container'); // Updated selector
+    elements.themeToggleButton = document.getElementById('theme-toggle-button'); // Added
     elements.imageUploadInput = document.getElementById('image-upload');
+    elements.imageUploadLabel = document.querySelector('label[for="image-upload"]'); 
     elements.imagePreviewCanvas = document.getElementById('image-preview-canvas');
     elements.imagePreviewContainer = document.getElementById('image-preview-container');
     elements.debugOverlaysContainer = document.getElementById('debug-overlays');
@@ -46,11 +54,11 @@ export function populateElements() {
     elements.manualThresholdSettingsDiv = document.getElementById('manual-threshold-settings');
     elements.adaptiveThresholdSettingsDiv = document.getElementById('adaptive-threshold-settings');
     elements.thresholdSlider = document.getElementById('threshold-slider');
-    elements.thresholdValueSpan = document.getElementById('threshold-value');
+    elements.thresholdNumberInput = document.getElementById('threshold-number-input'); // Added
     elements.adaptiveBlocksizeInput = document.getElementById('adaptive-blocksize-input');
     elements.adaptiveCInput = document.getElementById('adaptive-c-input');
     elements.minSizeSlider = document.getElementById('min-sprite-size-slider');
-    elements.minSizeValueSpan = document.getElementById('min-sprite-size-value');
+    elements.minSizeNumberInput = document.getElementById('min-sprite-size-number-input'); // Added
     elements.debugViewCheckboxes = document.querySelectorAll('input[name="debug-view"]');
     elements.debugOverlayCheckboxes = document.querySelectorAll('input[name="debug-overlay"]');
     elements.showGrayscaleCheckbox = document.getElementById('show-grayscale-checkbox');
@@ -76,14 +84,13 @@ export function populateElements() {
 
     // Validation
     for (const key in elements) {
+        // Skip validation for collections that might be empty initially
         const isCollection = key.endsWith('Buttons') || key.endsWith('Checkboxes');
         if (elements[key] === null && !isCollection) {
             console.warn(`DOM element not found for key: ${key}`);
-        } else if (isCollection && elements[key] instanceof NodeList && elements[key].length === 0) {
-            console.warn(`No DOM elements found for NodeList key: ${key}`);
         } else if (isCollection && !(elements[key] instanceof NodeList)) {
-            // Catch if a collection variable didn't get a NodeList
-            // console.warn(`Expected NodeList but got different type for key: ${key}`);
+             // Catch if a collection variable didn't get a NodeList (but allow empty NodeList)
+            console.warn(`Expected NodeList but got different type for key: ${key}`);
         }
     }
     console.log("DOM elements populated.");

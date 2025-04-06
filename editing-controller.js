@@ -1,41 +1,44 @@
 import { elements } from 'dom-elements';
 import { appState, setEditModeState, setSelectedBlobIndex, deleteBlobByIndex, updateBlobBoundsByIndex, addBlob } from 'state';
-import { updateDebugOverlays } from 'debug-controller'; // For highlighting and handles
-import { clearGeneratedSpritesheet } from 'spritesheet-controller'; // To invalidate spritesheet on edit
-import { invalidateProcessing } from 'processing-controller'; // To mark results as potentially stale
-import { updateImageDisplayTransform } from 'viewport-controller'; // To get current zoom
+import { updateDebugOverlays } from 'debug-controller';
+import { clearGeneratedSpritesheet } from 'spritesheet-controller';
+import { invalidateProcessing } from 'processing-controller';
+import { updateImageDisplayTransform } from 'viewport-controller';
 
-// --- Local State for Dragging ---
+// --- Local State for Dragging/Adding ---
 let isResizing = false;
 let dragHandleType = null;
-let startDragX = 0; // ClientX/Y relative to viewport
-let startDragY = 0;
-let startBounds = null; // Original bounds { minX, minY, width, height } at drag start
-let selectedBoxElement = null; // Reference to the .editable-bbox div being resized
+let startDragX_client = 0; 
+let startDragY_client = 0;
+let startBounds_resize = null; 
+let selectedBoxElement_resize = null; 
 
-// --- Local State for Adding Box ---
 let isAddingBox = false;
-let startAddX_img = 0; // Start position in image coordinates
+let startAddX_img = 0; 
 let startAddY_img = 0;
-let tempAddBoxElement = null; // Temporary div displayed while drawing
+let tempAddBoxElement = null; 
 
+// --- Initialization ---
 export function initEditingController() {
     elements.editModeButtons.forEach(button => {
-        button.addEventListener('click', () => setEditModeAndClearSelection(button.dataset.mode));
+        button.addEventListener('click', () => handleModeButtonClick(button.dataset.mode));
     });
     elements.deleteSelectedButton.addEventListener('click', handleDeleteSelected);
 
-    // Event listeners for interactions on the preview area
     elements.imagePreviewContainer.addEventListener('mousedown', handlePreviewMouseDown);
     elements.imagePreviewContainer.addEventListener('click', handlePreviewClick);
 
-    // Global listeners for mouse move/up during drag operations (resize/pan)
-    // These are added/removed dynamically to avoid listening all the time
     document.addEventListener('mousemove', handleGlobalMouseMove);
     document.addEventListener('mouseup', handleGlobalMouseUp);
 
-    setEditModeUI(appState.editing.currentEditMode); // Set initial mode UI
-    updateEditModeUI(); // Update enable/disable state
+    setEditModeAndClearSelection('pan'); 
+    updateEditModeUI(); 
+}
+
+// --- Event Handlers ---
+
+function handleModeButtonClick(newMode) {
+    setEditModeAndClearSelection(newMode);
 }
 
 function handleDeleteSelected() {
@@ -44,102 +47,142 @@ function handleDeleteSelected() {
         const success = deleteBlobByIndex(selectedIndex);
         if (success) {
             console.log(`Blob ${selectedIndex} deleted.`);
-            clearGeneratedSpritesheet(); // Invalidate generated spritesheet
-            invalidateProcessing(true); // Mark results as stale
-            elements.processingStatusDiv.textContent = `Sprite ${selectedIndex} deleted. Spritesheet needs regenerating.`;
-            updateDebugOverlays(); // Redraw overlays (removes deleted box and its handles)
-            updateEditModeUI(); // Update button states (delete/edit bounds become disabled)
-            updateEditingStatus(); // Update status text
+            clearGeneratedSpritesheet(); 
+            invalidateProcessing(true); 
+            elements.processingStatusDiv.textContent = `Sprite ${selectedIndex} deleted. Regeneration needed.`; 
+            updateDebugOverlays(); 
+            updateEditModeUI(); 
+            updateEditingStatus(); 
         }
     } else {
         console.warn("Delete button clicked but no blob selected.");
     }
 }
 
-export function setEditModeAndClearSelection(newMode) {
-    if (appState.editing.currentEditMode !== newMode) {
-        setSelectedBlobIndex(null); // Deselect when changing mode
-    }
-    // Stop any active resizing if mode changes
-    if (isResizing) {
-        stopResizing(false); // Don't save changes if mode changed mid-drag
-    }
-    if (isAddingBox) {
-        stopAddingBox(false); // Cancel adding box if mode changes
+function handlePreviewMouseDown(event) {
+    if (event.button !== 0) return; 
+
+    if (appState.editing.currentEditMode === 'edit-bounds' && event.target.classList.contains('resize-handle')) {
+        event.stopPropagation(); 
+        startResizing(event); 
+        return;
     }
 
-    setEditModeUI(newMode);
-    updateDebugOverlays(); // Redraw overlays to show/hide handles based on mode
+    if (appState.editing.currentEditMode === 'add') {
+        event.preventDefault(); 
+        event.stopPropagation();
+        startAddingBox(event); 
+        return;
+    }
 }
 
-function setEditModeUI(newMode) {
-    console.log("Setting edit mode to:", newMode);
-    setEditModeState(newMode);
+function handleGlobalMouseMove(event) {
+    if (isResizing) {
+        event.preventDefault(); 
+        updateResize(event); 
+    } else if (isAddingBox) {
+        updateAddingBox(event); 
+    }
+}
 
-    elements.editModeButtons.forEach(button => {
-        button.classList.toggle('active', button.dataset.mode === newMode);
-    });
+function handleGlobalMouseUp(event) {
+    if (event.button !== 0) return; 
 
-    // Update container class for cursor styling
-    elements.imagePreviewContainer.classList.remove('pan-mode', 'select-mode', 'grabbing'); // Add other modes later
-    if (newMode === 'pan') {
-        elements.imagePreviewContainer.classList.add('pan-mode');
-    } else if (newMode === 'select') {
-        elements.imagePreviewContainer.classList.add('select-mode');
-    } else if (newMode === 'edit-bounds' && appState.editing.selectedBlobIndex !== null) {
-        // Cursor is handled by the handles themselves, maybe default for container?
-        elements.imagePreviewContainer.style.cursor = 'default'; // Or maybe 'crosshair'?
-    } else if (newMode === 'add') {
-        elements.imagePreviewContainer.classList.add('add-mode'); // Use CSS for cursor
-    } else {
-        elements.imagePreviewContainer.style.cursor = 'default';
+    if (isResizing) {
+        event.stopPropagation(); 
+        stopResizing(true); 
+    } else if (isAddingBox) {
+        event.stopPropagation();
+        stopAddingBox(true); 
+    }
+}
+
+function handlePreviewClick(event) {
+    if (appState.editing.currentEditMode === 'select' && !event.target.classList.contains('resize-handle')) {
+        const target = event.target;
+        if (target.classList.contains('editable-bbox')) {
+            const indexStr = target.dataset.blobIndex;
+            const index = parseInt(indexStr, 10);
+
+            if (!isNaN(index) && index >= 0 && index < appState.detectedBlobs.length) {
+                const newIndex = (appState.editing.selectedBlobIndex === index) ? null : index; 
+                setSelectedBlobIndex(newIndex);
+                console.log("Selected blob index:", appState.editing.selectedBlobIndex);
+            } else {
+                console.warn("Clicked editable-bbox with invalid index:", indexStr);
+                setSelectedBlobIndex(null); 
+            }
+        } else {
+            setSelectedBlobIndex(null);
+        }
+        highlightSelectedBlob();
+        event.stopPropagation(); 
+    }
+}
+
+// --- Mode and UI Updates ---
+
+export function setEditModeAndClearSelection(newMode) {
+    if (!newMode || typeof newMode !== 'string') {
+        console.warn("Invalid mode provided:", newMode);
+        return;
     }
 
-    updateEditModeUI(); // Update enable/disable state based on new mode & selection
-    updateEditingStatus();
-    // Highlight/handles are updated via updateDebugOverlays called in setEditModeAndClearSelection
+    if (newMode === 'split' || newMode === 'merge') {
+        console.log(`Mode ${newMode} not implemented.`);
+        return; 
+    }
+
+    if (appState.editing.currentEditMode !== newMode) {
+        setSelectedBlobIndex(null); 
+    }
+    if (isResizing) {
+        stopResizing(false); 
+    }
+    if (isAddingBox) {
+        stopAddingBox(false); 
+    }
+
+    setEditModeState(newMode); 
+    updateEditModeUI(); 
+    updateDebugOverlays(); 
+    updateEditingStatus(); 
+    updateContainerCursor(); 
+    console.log("Set edit mode to:", newMode);
 }
 
 export function updateEditModeUI() {
     const hasImage = !!appState.originalImageInfo;
     const hasBlobs = appState.detectedBlobs && appState.detectedBlobs.length > 0;
     const isBlobSelected = appState.editing.selectedBlobIndex !== null;
+    const currentMode = appState.editing.currentEditMode;
 
     elements.editModeButtons.forEach(button => {
         const mode = button.dataset.mode;
         let disabled = false;
 
-        switch (mode) {
-            case 'pan':
-                disabled = !hasImage;
-                break;
-            case 'select':
-                disabled = !hasBlobs;
-                break;
-            case 'edit-bounds':
-                disabled = !hasBlobs || !isBlobSelected;
-                break;
-            case 'add':
-                disabled = !hasImage;
-                break;
-            case 'split':
-            case 'merge':
-                disabled = true; // Not implemented
-                break;
-            default:
-                disabled = !hasImage;
-                break;
+        if (!hasImage) {
+            disabled = true; 
+        } else if ((mode === 'select' || mode === 'edit-bounds' || mode === 'delete') && !hasBlobs) {
+            disabled = true; 
+        } else if ((mode === 'edit-bounds' || mode === 'delete') && !isBlobSelected) {
+        } else if (mode === 'split' || mode === 'merge') {
+             disabled = true; 
         }
+
         button.disabled = disabled;
+        button.classList.toggle('active', mode === currentMode && !disabled);
     });
 
-    elements.deleteSelectedButton.disabled = !isBlobSelected || !hasBlobs;
+    const editBoundsButton = document.getElementById('edit-bounds-mode-btn');
+    if (editBoundsButton) {
+        editBoundsButton.disabled = !hasImage || !hasBlobs || !isBlobSelected;
+        editBoundsButton.classList.toggle('active', currentMode === 'edit-bounds' && !editBoundsButton.disabled);
+    }
 
-    elements.editModeButtons.forEach(button => {
-        button.classList.toggle('active', button.dataset.mode === appState.editing.currentEditMode && !button.disabled);
-    });
+    elements.deleteSelectedButton.disabled = !hasImage || !hasBlobs || !isBlobSelected;
 
-    updateEditingStatus();
+    updateContainerCursor(); 
 }
 
 function updateEditingStatus() {
@@ -149,71 +192,77 @@ function updateEditingStatus() {
 
     switch (currentEditMode) {
         case 'select':
-            status += isBlobSelected ? `Sprite ${selectedBlobIndex} selected.` : `Click on a blue box to select a sprite.`;
+            status += isBlobSelected
+                ? `Sprite ${selectedBlobIndex} selected. Click another box or empty space.`
+                : `Click on a blue box to select a sprite.`;
             break;
         case 'pan':
-            status += 'Click and drag to pan, use wheel or buttons to zoom.';
+            status += 'Click & drag to pan, use wheel or buttons to zoom.';
             break;
         case 'edit-bounds':
-            status += isBlobSelected ? `Drag handles to resize Sprite ${selectedBlobIndex}.` : 'Select a sprite first.';
+            status += isBlobSelected
+                ? `Selected Sprite ${selectedBlobIndex}. Drag handles to resize.`
+                : 'Select a sprite first (use Select mode).';
             break;
         case 'add':
             status += 'Click and drag on the image to draw a new sprite box.';
             break;
-        default:
+        case 'split':
+        case 'merge':
             status += '(Not Implemented)';
             break;
+        default:
+             status = `Current mode: ${currentEditMode || 'None'}`;
+             break;
     }
 
     elements.editingStatusDiv.textContent = status;
 }
 
-function handlePreviewMouseDown(event) {
-    if (event.button !== 0) return; // Only left clicks
+function updateContainerCursor() {
+    const container = elements.imagePreviewContainer;
+    if (!container) return;
 
-    // Handle Resize Start
-    if (appState.editing.currentEditMode === 'edit-bounds' && event.target.classList.contains('resize-handle')) {
-        event.stopPropagation(); // Prevent pan or select logic
-        startResizing(event);
-        return; // Don't process further
+    container.classList.remove('pan-mode', 'select-mode', 'add-mode', 'grabbing'); 
+    container.style.cursor = 'default'; 
+
+    switch (appState.editing.currentEditMode) {
+        case 'pan':
+            container.classList.add('pan-mode'); 
+            break;
+        case 'select':
+            container.classList.add('select-mode'); 
+            break;
+        case 'edit-bounds':
+            break;
+        case 'add':
+            container.classList.add('add-mode'); 
+            break;
     }
-
-    // Handle Add Box Start
-    if (appState.editing.currentEditMode === 'add') {
-        event.preventDefault();
-        event.stopPropagation();
-        startAddingBox(event);
-        return; // Don't process further
+    if (appState.viewport.isPanning && appState.editing.currentEditMode === 'pan') {
+         container.classList.add('grabbing');
     }
-
-    // Pan logic is handled in viewport-controller
-    // Select logic is handled in handlePreviewClick
 }
 
-function handleGlobalMouseMove(event) {
+function highlightSelectedBlob() {
+    updateDebugOverlays(); 
+    updateEditModeUI(); 
+    updateEditingStatus(); 
+}
+
+export function resetEditingOnLoad() {
     if (isResizing) {
-        event.preventDefault(); // Prevent text selection etc.
-        updateResize(event);
-    } else if (isAddingBox) {
-        updateAddingBox(event);
+        stopResizing(false); 
     }
-    // Pan logic is handled in viewport-controller
+    if (isAddingBox) {
+        stopAddingBox(false); 
+    }
+    setEditModeAndClearSelection('pan'); 
+    elements.editingStatusDiv.textContent = ''; 
+    elements.editingToolsSection.style.display = 'none'; 
 }
 
-function handleGlobalMouseUp(event) {
-    if (event.button !== 0) return; // Only left clicks
-
-    if (isResizing) {
-        event.stopPropagation(); // Prevent potential click handlers
-        stopResizing(true); // Save the changes
-    } else if (isAddingBox) {
-        event.stopPropagation();
-        stopAddingBox(true); // Finalize the new box
-    }
-    // Pan logic is handled in viewport-controller
-}
-
-// --- Resizing Logic ---
+// --- Resizing Logic (Helper Functions) ---
 
 function startResizing(event) {
     const selectedIndex = appState.editing.selectedBlobIndex;
@@ -221,81 +270,79 @@ function startResizing(event) {
 
     const handle = event.target;
     dragHandleType = handle.dataset.handleType;
-    selectedBoxElement = handle.closest('.editable-bbox'); // Find the parent box element
+    selectedBoxElement_resize = handle.closest('.editable-bbox');
 
-    if (!selectedBoxElement || !dragHandleType) {
+    if (!selectedBoxElement_resize || !dragHandleType) {
         console.error("Could not find handle type or parent box for resize start.");
         return;
     }
 
-    startDragX = event.clientX;
-    startDragY = event.clientY;
-    // Get the *current* bounds from the state as the starting point
+    startDragX_client = event.clientX;
+    startDragY_client = event.clientY;
     const currentBounds = appState.detectedBlobs[selectedIndex].bounds;
-    startBounds = { ...currentBounds }; // Clone
+    startBounds_resize = { ...currentBounds }; 
 
     isResizing = true;
-    elements.imagePreviewContainer.classList.add('resizing'); // Add class for potential global cursor changes
-    console.log(`Start resize: handle=${dragHandleType}, startBounds=`, startBounds);
+    console.log(`Start resize: handle=${dragHandleType}, startBounds=`, { ...startBounds_resize });
 }
 
 function updateResize(event) {
-    if (!isResizing || !startBounds || !selectedBoxElement) return;
+    if (!isResizing || !startBounds_resize || !selectedBoxElement_resize) return;
 
     const currentZoom = appState.viewport.currentZoom;
-    const dx = (event.clientX - startDragX) / currentZoom; // Delta in image pixels
-    const dy = (event.clientY - startDragY) / currentZoom;
+    const dx = currentZoom !== 0 ? (event.clientX - startDragX_client) / currentZoom : 0;
+    const dy = currentZoom !== 0 ? (event.clientY - startDragY_client) / currentZoom : 0;
 
-    let { minX, minY, width, height } = startBounds;
+    let newBounds = { ...startBounds_resize };
 
-    // Calculate new dimensions based on handle type
     if (dragHandleType.includes('n')) {
-        minY += dy;
-        height -= dy;
+        newBounds.minY += dy;
+        newBounds.height -= dy;
     }
     if (dragHandleType.includes('s')) {
-        height += dy;
+        newBounds.height += dy;
     }
     if (dragHandleType.includes('w')) {
-        minX += dx;
-        width -= dx;
+        newBounds.minX += dx;
+        newBounds.width -= dx;
     }
     if (dragHandleType.includes('e')) {
-        width += dx;
+        newBounds.width += dx;
     }
 
-    // Ensure minimum size (e.g., 1x1 pixel)
-    width = Math.max(1, width);
-    height = Math.max(1, height);
-    // Adjust position if size change flipped the box (e.g., dragged top handle below bottom)
-    if (width < 1) { /* Handle negative width if necessary */ }
-    if (height < 1) { /* Handle negative height if necessary */ }
+    if (newBounds.width < 1) {
+        if (dragHandleType.includes('w')) { 
+            newBounds.minX = startBounds_resize.minX + startBounds_resize.width - 1; 
+        }
+        newBounds.width = 1; 
+    }
+    if (newBounds.height < 1) {
+         if (dragHandleType.includes('n')) { 
+            newBounds.minY = startBounds_resize.minY + startBounds_resize.height - 1; 
+        }
+        newBounds.height = 1; 
+    }
 
-    // Update the visual representation directly for responsiveness
-    selectedBoxElement.style.left = `${minX}px`;
-    selectedBoxElement.style.top = `${minY}px`;
-    selectedBoxElement.style.width = `${width}px`;
-    selectedBoxElement.style.height = `${height}px`;
-
-    // Note: Handles reposition automatically via CSS percentages inside the box
+    selectedBoxElement_resize.style.left = `${newBounds.minX}px`;
+    selectedBoxElement_resize.style.top = `${newBounds.minY}px`;
+    selectedBoxElement_resize.style.width = `${newBounds.width}px`;
+    selectedBoxElement_resize.style.height = `${newBounds.height}px`;
 }
 
 function stopResizing(saveChanges) {
     if (!isResizing) return;
+
+    const selectedIndex = appState.editing.selectedBlobIndex; 
+
     isResizing = false;
-    elements.imagePreviewContainer.classList.remove('resizing');
 
-    if (saveChanges && selectedBoxElement && startBounds) {
-        const selectedIndex = appState.editing.selectedBlobIndex;
+    if (saveChanges && selectedBoxElement_resize && startBounds_resize && selectedIndex !== null) {
+        const finalMinX = parseFloat(selectedBoxElement_resize.style.left);
+        const finalMinY = parseFloat(selectedBoxElement_resize.style.top);
+        const finalWidth = parseFloat(selectedBoxElement_resize.style.width);
+        const finalHeight = parseFloat(selectedBoxElement_resize.style.height);
 
-        // Read final bounds from the styled element
-        const finalMinX = parseFloat(selectedBoxElement.style.left);
-        const finalMinY = parseFloat(selectedBoxElement.style.top);
-        const finalWidth = parseFloat(selectedBoxElement.style.width);
-        const finalHeight = parseFloat(selectedBoxElement.style.height);
-
-        if (!isNaN(finalMinX) && !isNaN(finalMinY) && !isNaN(finalWidth) && finalWidth > 0 && !isNaN(finalHeight) && finalHeight > 0 && selectedIndex !== null) {
-
+        if (!isNaN(finalMinX) && !isNaN(finalMinY) && !isNaN(finalWidth) && finalWidth >= 1 && !isNaN(finalHeight) && finalHeight >= 1) {
             const newBounds = {
                 minX: finalMinX,
                 minY: finalMinY,
@@ -306,69 +353,66 @@ function stopResizing(saveChanges) {
             const updated = updateBlobBoundsByIndex(selectedIndex, newBounds);
 
             if (updated) {
-                clearGeneratedSpritesheet(); // Invalidate spritesheet
-                invalidateProcessing(true); // Mark CCL/Blobs as stale
-                elements.processingStatusDiv.textContent = `Sprite ${selectedIndex} resized. Spritesheet needs regenerating.`;
+                clearGeneratedSpritesheet();
+                invalidateProcessing(true); 
+                elements.processingStatusDiv.textContent = `Sprite ${selectedIndex} resized. Regeneration needed.`;
                 console.log(`Resize end: Saved new bounds for blob ${selectedIndex}`, newBounds);
             } else {
-                console.error("Failed to save updated bounds to state.");
-                // Optionally revert visual changes here
+                console.error("Failed to save updated bounds to state for blob:", selectedIndex);
+                selectedBoxElement_resize.style.left = `${startBounds_resize.minX}px`;
+                selectedBoxElement_resize.style.top = `${startBounds_resize.minY}px`;
+                selectedBoxElement_resize.style.width = `${startBounds_resize.width}px`;
+                selectedBoxElement_resize.style.height = `${startBounds_resize.height}px`;
             }
-
         } else {
-            console.warn("Resize ended with invalid final bounds or no selection. Reverting visual changes.");
-            // Revert visual change if saving failed or bounds were invalid
-            selectedBoxElement.style.left = `${startBounds.minX}px`;
-            selectedBoxElement.style.top = `${startBounds.minY}px`;
-            selectedBoxElement.style.width = `${startBounds.width}px`;
-            selectedBoxElement.style.height = `${startBounds.height}px`;
+            console.warn("Resize ended with invalid final bounds. Reverting visual changes.");
+            selectedBoxElement_resize.style.left = `${startBounds_resize.minX}px`;
+            selectedBoxElement_resize.style.top = `${startBounds_resize.minY}px`;
+            selectedBoxElement_resize.style.width = `${startBounds_resize.width}px`;
+            selectedBoxElement_resize.style.height = `${startBounds_resize.height}px`;
         }
 
-    } else if (!saveChanges && selectedBoxElement && startBounds) {
-        // Resizing cancelled (e.g., mode change), revert visual changes
+    } else if (!saveChanges && selectedBoxElement_resize && startBounds_resize) {
         console.log("Resize cancelled, reverting visual changes.");
-        selectedBoxElement.style.left = `${startBounds.minX}px`;
-        selectedBoxElement.style.top = `${startBounds.minY}px`;
-        selectedBoxElement.style.width = `${startBounds.width}px`;
-        selectedBoxElement.style.height = `${startBounds.height}px`;
+        selectedBoxElement_resize.style.left = `${startBounds_resize.minX}px`;
+        selectedBoxElement_resize.style.top = `${startBounds_resize.minY}px`;
+        selectedBoxElement_resize.style.width = `${startBounds_resize.width}px`;
+        selectedBoxElement_resize.style.height = `${startBounds_resize.height}px`;
     }
 
-    // Reset drag state
     dragHandleType = null;
-    startBounds = null;
-    startDragX = 0;
-    startDragY = 0;
-    selectedBoxElement = null;
+    startBounds_resize = null;
+    startDragX_client = 0;
+    startDragY_client = 0;
+    selectedBoxElement_resize = null;
 
-    // Redraw overlays to ensure consistency with state and correct handles
     updateDebugOverlays();
-    updateEditingStatus(); // Update status message
+    updateEditingStatus(); 
 }
 
-// --- Add Box Logic ---
+// --- Add Box Logic (Helper Functions) ---
 
 function startAddingBox(event) {
     const { currentZoom, panX, panY } = appState.viewport;
     const rect = elements.imagePreviewContainer.getBoundingClientRect();
 
-    // Calculate click position in image coordinates
     const mouseX_container = event.clientX - rect.left;
     const mouseY_container = event.clientY - rect.top;
-    startAddX_img = (mouseX_container - panX) / currentZoom;
-    startAddY_img = (mouseY_container - panY) / currentZoom;
+    startAddX_img = currentZoom !== 0 ? (mouseX_container - panX) / currentZoom : mouseX_container - panX;
+    startAddY_img = currentZoom !== 0 ? (mouseY_container - panY) / currentZoom : mouseY_container - panY;
 
     isAddingBox = true;
 
-    // Create a temporary visual element
     tempAddBoxElement = document.createElement('div');
-    tempAddBoxElement.className = 'adding-bbox-temp'; // Style this in CSS
+    tempAddBoxElement.className = 'adding-bbox-temp'; 
+    tempAddBoxElement.style.position = 'absolute'; 
     tempAddBoxElement.style.left = `${startAddX_img}px`;
     tempAddBoxElement.style.top = `${startAddY_img}px`;
     tempAddBoxElement.style.width = '0px';
     tempAddBoxElement.style.height = '0px';
+    tempAddBoxElement.style.pointerEvents = 'none'; 
 
     elements.debugOverlaysContainer.appendChild(tempAddBoxElement);
-    elements.imagePreviewContainer.classList.add('adding');
 
     console.log(`Start adding box at image coords: (${startAddX_img.toFixed(1)}, ${startAddY_img.toFixed(1)})`);
 }
@@ -379,19 +423,16 @@ function updateAddingBox(event) {
     const { currentZoom, panX, panY } = appState.viewport;
     const rect = elements.imagePreviewContainer.getBoundingClientRect();
 
-    // Current mouse position in image coordinates
     const mouseX_container = event.clientX - rect.left;
     const mouseY_container = event.clientY - rect.top;
-    const currentX_img = (mouseX_container - panX) / currentZoom;
-    const currentY_img = (mouseY_container - panY) / currentZoom;
+    const currentX_img = currentZoom !== 0 ? (mouseX_container - panX) / currentZoom : mouseX_container - panX;
+    const currentY_img = currentZoom !== 0 ? (mouseY_container - panY) / currentZoom : mouseY_container - panY;
 
-    // Calculate bounds (handle dragging in any direction)
     const minX = Math.min(startAddX_img, currentX_img);
     const minY = Math.min(startAddY_img, currentY_img);
     const width = Math.abs(currentX_img - startAddX_img);
     const height = Math.abs(currentY_img - startAddY_img);
 
-    // Update the temporary element's style
     tempAddBoxElement.style.left = `${minX}px`;
     tempAddBoxElement.style.top = `${minY}px`;
     tempAddBoxElement.style.width = `${width}px`;
@@ -400,101 +441,43 @@ function updateAddingBox(event) {
 
 function stopAddingBox(saveChanges) {
     if (!isAddingBox) return;
-    isAddingBox = false;
-    elements.imagePreviewContainer.classList.remove('adding');
+    isAddingBox = false; 
 
     if (tempAddBoxElement) {
         if (saveChanges) {
-            // Get final bounds from the temporary element
             const finalMinX = parseFloat(tempAddBoxElement.style.left);
             const finalMinY = parseFloat(tempAddBoxElement.style.top);
             const finalWidth = parseFloat(tempAddBoxElement.style.width);
             const finalHeight = parseFloat(tempAddBoxElement.style.height);
 
-            // Basic validation (e.g., minimum size)
-            if (finalWidth >= 1 && finalHeight >= 1) {
+            if (!isNaN(finalMinX) && !isNaN(finalMinY) && finalWidth >= 1 && finalHeight >= 1) {
                 const newBounds = {
                     minX: finalMinX,
                     minY: finalMinY,
                     width: finalWidth,
                     height: finalHeight
                 };
-                addBlob(newBounds); // Add the new blob to the state
+                addBlob(newBounds); 
 
                 console.log("Added new blob:", newBounds);
-                clearGeneratedSpritesheet(); // Invalidate spritesheet
-                invalidateProcessing(true); // Mark results as stale (keep threshold)
-                elements.processingStatusDiv.textContent = `New sprite added. Spritesheet needs regenerating.`;
-                updateDebugOverlays(); // Redraw overlays to include the new box
-                updateEditModeUI(); // Update button states if needed
-                updateEditingStatus();
-
+                clearGeneratedSpritesheet(); 
+                invalidateProcessing(true); 
+                elements.processingStatusDiv.textContent = `New sprite added. Regeneration needed.`;
+                updateDebugOverlays(); 
+                updateEditModeUI(); 
+                updateEditingStatus(); 
+                setSelectedBlobIndex(appState.detectedBlobs.length - 1); 
+                setEditModeAndClearSelection('select'); 
             } else {
-                console.log("Add box cancelled: Box too small.");
+                console.log("Add box cancelled: Final box too small or invalid.");
             }
         } else {
             console.log("Add box cancelled by user.");
         }
-        // Remove the temporary element regardless of saving
         tempAddBoxElement.remove();
-        tempAddBoxElement = null;
     }
 
+    tempAddBoxElement = null;
     startAddX_img = 0;
     startAddY_img = 0;
-}
-
-// --- Selection Logic ---
-
-// Highlight the currently selected blob's div (Handles are drawn in debug-controller)
-function highlightSelectedBlob() {
-    updateDebugOverlays(); // This now handles selection class and handles drawing
-    updateEditModeUI(); // Update button states based on selection
-    updateEditingStatus(); // Update text based on selection
-}
-
-function handlePreviewClick(event) {
-    // Only handle clicks in select mode that aren't resize handles
-    if (appState.editing.currentEditMode === 'select' && !event.target.classList.contains('resize-handle')) {
-        const target = event.target;
-        if (target.classList.contains('editable-bbox')) {
-            const indexStr = target.dataset.blobIndex;
-            const index = parseInt(indexStr, 10);
-
-            if (!isNaN(index) && index >= 0 && index < appState.detectedBlobs.length) {
-                const newIndex = (appState.editing.selectedBlobIndex === index) ? null : index;
-                setSelectedBlobIndex(newIndex);
-                console.log("Selected blob index:", appState.editing.selectedBlobIndex);
-                highlightSelectedBlob();
-            } else {
-                console.warn("Clicked editable-bbox with invalid index:", indexStr);
-                setSelectedBlobIndex(null);
-                highlightSelectedBlob();
-            }
-        } else {
-            // Clicked outside any box, deselect
-            if (appState.editing.selectedBlobIndex !== null) {
-                setSelectedBlobIndex(null);
-                highlightSelectedBlob();
-            }
-        }
-        event.stopPropagation(); // Prevent triggering other potential listeners
-    }
-    // Clicks on handles are ignored here, handled by mousedown
-    // Clicks in pan mode are ignored here
-    // Clicks in edit-bounds mode outside handles might deselect? (Currently do nothing)
-}
-
-export function resetEditingOnLoad() {
-    if (isResizing) {
-        stopResizing(false); // Cancel any ongoing resize
-    }
-    if (isAddingBox) {
-        stopAddingBox(false); // Cancel any ongoing add operation
-    }
-    appState.editing.currentEditMode = 'pan';
-    appState.editing.selectedBlobIndex = null;
-    setEditModeUI('pan'); // This calls updateEditModeUI internally
-    elements.editingStatusDiv.textContent = '';
-    elements.editingToolsSection.style.display = 'none';
 }
