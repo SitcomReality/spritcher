@@ -22,6 +22,7 @@ export function displayExtractedSprites() {
     displayAvailableSprites();
     displaySelectedSprites();
     updateSelectionCounts(); // Update counts after rendering both
+    updateSpriteStats(); // Update stats display
     updateButtonStates(); // Update button enable/disable states
 }
 
@@ -107,6 +108,7 @@ function displaySelectedSprites() {
     });
 
     container.appendChild(fragment);
+    updateSpriteStats(); // Update stats after rendering
 }
 
 
@@ -210,6 +212,7 @@ export function clearExtractedSpritesDisplay() {
         }
     }
     updateSelectionCounts(); // Reset counts based on state
+    updateSpriteStats(); // Update stats (will show default message)
     updateButtonStates(); // Reset buttons based on state
 }
 
@@ -230,6 +233,7 @@ function handleAvailableSpriteClick(event) {
         displayAvailableSprites();
         displaySelectedSprites();
         updateSelectionCounts();
+        updateSpriteStats(); // Update stats
         updateButtonStates();
         clearGeneratedSpritesheet(); // Selection changed, invalidate sheet
     }
@@ -252,6 +256,7 @@ function handleSelectedSpriteClick(event) {
         displayAvailableSprites(); // Update 'already-selected' status
         displaySelectedSprites(); // Remove the item
         updateSelectionCounts();
+        updateSpriteStats(); // Update stats
         updateButtonStates();
         clearGeneratedSpritesheet(); // Selection changed, invalidate sheet
     }
@@ -266,6 +271,7 @@ function handleAddAllAvailable() {
     displayAvailableSprites();
     displaySelectedSprites();
     updateSelectionCounts();
+    updateSpriteStats(); // Update stats
     updateButtonStates();
     clearGeneratedSpritesheet(); // Selection changed, invalidate sheet
 }
@@ -279,6 +285,7 @@ function handleRemoveAllSelected() {
     displayAvailableSprites(); // Update 'already-selected' status
     displaySelectedSprites(); // Show empty placeholder
     updateSelectionCounts();
+    updateSpriteStats(); // Update stats
     updateButtonStates();
     clearGeneratedSpritesheet(); // Selection changed, invalidate sheet
 }
@@ -296,8 +303,50 @@ function updateSelectionCounts() {
 }
 
 /**
+ * NEW: Calculates and displays sprite statistics in the selected sprites panel.
+ */
+export function updateSpriteStats() {
+    const statsContainer = elements.selectedSpritesStatsDiv;
+    if (!statsContainer) return;
+
+    const selectedSprites = appState.selectedSpritesForSheet;
+
+    if (selectedSprites.length === 0) {
+        statsContainer.innerHTML = '<p>Select sprites to see size information.</p>';
+        return;
+    }
+
+    let largestW = 0;
+    let largestH = 0;
+    let totalW = 0;
+    let totalH = 0;
+
+    selectedSprites.forEach(sprite => {
+        const w = sprite.blob.bounds.width;
+        const h = sprite.blob.bounds.height;
+        if (w > largestW) largestW = w;
+        if (h > largestH) largestH = h;
+        totalW += w;
+        totalH += h;
+    });
+
+    const avgW = (totalW / selectedSprites.length).toFixed(1);
+    const avgH = (totalH / selectedSprites.length).toFixed(1);
+
+    // Recommended size is based on largest sprite + current padding setting
+    const padding = parseInt(elements.paddingInput?.value || "0", 10);
+    const recommendedCellW = largestW + padding * 2;
+    const recommendedCellH = largestH + padding * 2;
+
+    statsContainer.innerHTML = `
+        <p><strong>Largest Sprite:</strong> ${largestW} x ${largestH} px</p>
+        <p><strong>Average Size:</strong> ${avgW} x ${avgH} px</p>
+        <p><strong>Recommended Cell:</strong> ${recommendedCellW} x ${recommendedCellH} px (based on largest + ${padding}px padding)</p>
+    `;
+}
+
+/**
  * Updates the enabled/disabled state of buttons in the section.
- * EXPORT this function.
  */
 export function updateButtonStates() {
     const availableCount = appState.extractedSprites.length;

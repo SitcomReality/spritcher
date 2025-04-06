@@ -65,6 +65,26 @@
     flex-grow: 1; /* Allow container to grow within panel */
 }
 
+/* NEW: Stats Display Area Styles */
+.sprite-stats-display {
+    margin-top: 15px;
+    padding: 10px 15px;
+    background-color: var(--bg-secondary);
+    border: 1px dashed var(--border-secondary);
+    border-radius: 4px;
+    font-size: 0.9em;
+    color: var(--text-muted);
+    transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
+}
+
+.sprite-stats-display p {
+    margin: 5px 0;
+    line-height: 1.4;
+}
+.sprite-stats-display p strong {
+    color: var(--text-secondary);
+}
+
 /* Style for the selected container */
 .selected-container {
      border-style: solid;

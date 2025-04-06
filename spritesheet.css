@@ -14,11 +14,35 @@
 }
 
 #spritesheet-preview-canvas {
-     display: block;
-     background-color: var(--bg-primary); 
-     margin: 0 auto; 
-     image-rendering: pixelated; 
-     image-rendering: crisp-edges; 
-     transition: background-color 0.3s ease;
-     border: 1px dashed var(--border-secondary); 
+      display: block;
+      background-color: var(--bg-primary);
+      margin: 0 auto;
+      image-rendering: pixelated;
+      image-rendering: crisp-edges;
+      transition: background-color 0.3s ease;
+      border: 1px dashed var(--border-secondary);
+}
+
+/* Ensure settings section aligns items nicely */
+#spritesheet-section .setting {
+    align-items: baseline; /* Align labels and inputs */
+}
+
+#spritesheet-section .setting label {
+    min-width: 120px; /* Give labels consistent width */
+    flex-basis: auto; /* Allow flex-grow for inputs if needed */
+    padding-right: 10px;
+}
+
+#spritesheet-section fieldset {
+    display: flex;
+    flex-direction: column;
+    gap: 10px; /* Spacing between rows */
+}
+
+#spritesheet-section .setting input[type="number"],
+#spritesheet-section .setting select {
+    width: 100px; /* Consistent width for number/select inputs */
+    flex-grow: 0;
+    flex-shrink: 0;
 }

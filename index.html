@@ -138,6 +138,10 @@
                         <!-- Selected sprite previews will be generated here by JS -->
                          <p>Add sprites from the 'Available' panel.</p>
                     </div>
+                    <div id="selected-sprites-stats" class="sprite-stats-display">
+                        <!-- Stats will be populated by JS -->
+                        <p>Select sprites to see size information.</p>
+                    </div>
                     <div class="setting-hint">(Click on sprites above to remove them. Drag and drop to reorder - *coming soon*).</div>
                 </div>
             </div>
@@ -157,10 +161,19 @@
                     <span class="setting-hint">(px)</span>
                 </div>
                 <div class="setting">
-                    <label for="alignment-select">Alignment:</label>
-                    <select id="alignment-select" title="How sprites align within their grid cell if sizes vary">
-                        <option value="top-left">Top Left</option>
-                        <option value="center">Center</option>
+                    <label for="align-h-select">Horizontal Align:</label>
+                    <select id="align-h-select" title="How sprites align horizontally within their grid cell if sizes vary">
+                        <option value="left">Left</option>
+                        <option value="center" selected>Center</option>
+                        <option value="right">Right</option>
+                    </select>
+                </div>
+                <div class="setting">
+                    <label for="align-v-select">Vertical Align:</label>
+                    <select id="align-v-select" title="How sprites align vertically within their grid cell if sizes vary">
+                        <option value="top">Top</option>
+                        <option value="center" selected>Center</option>
+                        <option value="bottom">Bottom</option>
                     </select>
                 </div>
             </fieldset>

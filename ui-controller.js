@@ -116,11 +116,12 @@ export function disableAllControls(disabled) {
     // Extracted Sprites Section buttons are handled by its own controller (depends on available/selected counts)
     updateExtractedSpritesButtons();
 
-    // Spritesheet Section (depends on having sprites *selected*, not necessarily an image loaded)
+    // Spritesheet Section (depends on having sprites *selected*)
     elements.generateSpritesheetButton.disabled = processing || !spritesSelected;
     elements.gridColsInput.disabled = processing || !spritesSelected;
     elements.paddingInput.disabled = processing || !spritesSelected;
-    elements.alignmentSelect.disabled = processing || !spritesSelected;
+    elements.alignHSelect.disabled = processing || !spritesSelected;
+    elements.alignVSelect.disabled = processing || !spritesSelected;
     // Download button depends on generated canvas existing
     elements.downloadSpritesheetButton.disabled = processing || !appState.generatedSpritesheetCanvas;
 
@@ -166,7 +167,10 @@ function clearStateForNewImageLoad() {
 
     // Reset other UI areas
     resetEditingOnLoad(); 
-    // Don't clear generated spritesheet here
+    clearGeneratedSpritesheet(); // Also clears spritesheet settings UI state
+    if (elements.selectedSpritesStatsDiv) { 
+        elements.selectedSpritesStatsDiv.innerHTML = "<p>Select sprites to see size information.</p>";
+    }
 
     elements.processingStatusDiv.textContent = 'Loading new image...';
 
@@ -208,7 +212,10 @@ function clearUIBeforeFirstLoad() {
     // Reset other UI areas
     clearProcessingOnLoad();
     resetEditingOnLoad();
-    clearGeneratedSpritesheet();
+    clearGeneratedSpritesheet(); // Also clears spritesheet settings UI state
+    if (elements.selectedSpritesStatsDiv) { 
+        elements.selectedSpritesStatsDiv.innerHTML = "<p>Upload an image and select sprites to see size information.</p>";
+    }
 
     elements.processingStatusDiv.textContent = 'Upload an image to start.';
 

@@ -26,7 +26,8 @@ export const elements = {
     processingStatusDiv: null,
     gridColsInput: null,
     paddingInput: null,
-    alignmentSelect: null,
+    alignHSelect: null, // Added
+    alignVSelect: null, // Added
     generateSpritesheetButton: null,
     spritesheetPreviewCanvas: null,
     spritesheetPreviewContainer: null,
@@ -42,10 +43,11 @@ export const elements = {
     // Extracted Sprites Section NEW/Renamed
     availableSpritesDisplayContainer: null,
     availableSpritesCountSpan: null,
-    addAllAvailableButton: null,
+    addAllAvailableButton: null, 
     selectedSpritesDisplayContainer: null,
     selectedSpritesCountSpan: null,
     removeAllSelectedButton: null,
+    selectedSpritesStatsDiv: null, // Added
 };
 
 export function populateElements() {
@@ -75,7 +77,8 @@ export function populateElements() {
     elements.processingStatusDiv = document.getElementById('processing-status');
     elements.gridColsInput = document.getElementById('grid-cols-input');
     elements.paddingInput = document.getElementById('padding-input');
-    elements.alignmentSelect = document.getElementById('alignment-select');
+    elements.alignHSelect = document.getElementById('align-h-select');
+    elements.alignVSelect = document.getElementById('align-v-select');
     elements.generateSpritesheetButton = document.getElementById('generate-spritesheet-button');
     elements.spritesheetPreviewCanvas = document.getElementById('spritesheet-preview-canvas');
     elements.spritesheetPreviewContainer = document.getElementById('spritesheet-preview-container');
@@ -96,6 +99,7 @@ export function populateElements() {
     elements.selectedSpritesDisplayContainer = document.getElementById('selected-sprites-display');
     elements.selectedSpritesCountSpan = document.getElementById('selected-sprites-count'); 
     elements.removeAllSelectedButton = document.getElementById('remove-all-selected-btn'); 
+    elements.selectedSpritesStatsDiv = document.getElementById('selected-sprites-stats'); 
 
     // Validation
     for (const key in elements) {

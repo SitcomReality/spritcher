@@ -2,11 +2,13 @@ import { elements } from 'dom-elements';
 import { appState, setGeneratedSpritesheet, clearGeneratedSpritesheetState } from 'state';
 import { generateSpritesheet, downloadCanvasAsPNG } from 'spritesheet-generator';
 import { disableAllControls } from 'ui-controller';
+import { updateSpriteStats } from 'extracted-sprites-controller'; 
 
 export function initSpritesheetController() {
     elements.gridColsInput.addEventListener('change', handleSpritesheetSettingsChange);
     elements.paddingInput.addEventListener('change', handleSpritesheetSettingsChange);
-    elements.alignmentSelect.addEventListener('change', handleSpritesheetSettingsChange);
+    elements.alignHSelect.addEventListener('change', handleSpritesheetSettingsChange); 
+    elements.alignVSelect.addEventListener('change', handleSpritesheetSettingsChange); 
     elements.generateSpritesheetButton.addEventListener('click', handleGenerateSpritesheet);
     elements.downloadSpritesheetButton.addEventListener('click', handleDownloadSpritesheet);
 }
@@ -43,7 +45,8 @@ async function handleGenerateSpritesheet() {
 
     const cols = parseInt(elements.gridColsInput.value, 10) || 8;
     const padding = parseInt(elements.paddingInput.value, 10) || 0;
-    const alignment = elements.alignmentSelect.value;
+    const alignH = elements.alignHSelect.value; 
+    const alignV = elements.alignVSelect.value; 
 
     try {
         // Pass the list of selected sprite objects, including their source data
@@ -51,7 +54,8 @@ async function handleGenerateSpritesheet() {
             spritesToInclude,
             cols,
             padding,
-            alignment
+            alignH, 
+            alignV 
         );
 
         setGeneratedSpritesheet(resultCanvas); // Store in state
@@ -65,6 +69,8 @@ async function handleGenerateSpritesheet() {
 
         elements.processingStatusDiv.textContent = `Spritesheet generated (${spritesToInclude.length} sprites). Ready to download.`;
         elements.downloadSpritesheetButton.disabled = false;
+        // Ensure stats are up-to-date (though they shouldn't change on generate)
+        updateSpriteStats();
         console.log("Spritesheet generation and preview complete.");
 
     } catch (error) {
@@ -117,5 +123,10 @@ export function clearGeneratedSpritesheet() {
         elements.spritesheetPreviewCanvas.height = 1;
     }
     if(elements.downloadSpritesheetButton) elements.downloadSpritesheetButton.disabled = true;
+    // Reset spritesheet settings UI
+    if (elements.gridColsInput) elements.gridColsInput.value = 8;
+    if (elements.paddingInput) elements.paddingInput.value = 2;
+    if (elements.alignHSelect) elements.alignHSelect.value = 'center';
+    if (elements.alignVSelect) elements.alignVSelect.value = 'center';
     console.log("Spritesheet cleared.");
 }

@@ -22,8 +22,9 @@ export function calculateSpritesheetLayout(selectedSprites, cols, padding) {
     });
 
     // Cell dimensions include the sprite and padding on both sides
-    const cellWidth = maxSpriteWidth + padding * 2;
-    const cellHeight = maxSpriteHeight + padding * 2;
+    // Ensure minimum cell size is 1 pixel + padding
+    const cellWidth = Math.max(1, maxSpriteWidth) + padding * 2;
+    const cellHeight = Math.max(1, maxSpriteHeight) + padding * 2;
 
     const numRows = Math.ceil(selectedSprites.length / cols);
     const sheetWidth = cols * cellWidth;
@@ -32,11 +33,11 @@ export function calculateSpritesheetLayout(selectedSprites, cols, padding) {
     return {
         sheetWidth,
         sheetHeight,
-        cellWidth,
-        cellHeight,
+        cellWidth, // Width of the cell including padding
+        cellHeight, // Height of the cell including padding
         numRows,
-        maxSpriteWidth,
-        maxSpriteHeight
+        maxSpriteWidth, // Max width of the actual sprite content
+        maxSpriteHeight // Max height of the actual sprite content
     };
 }
 
@@ -48,10 +49,11 @@ export function calculateSpritesheetLayout(selectedSprites, cols, padding) {
  * @param {Array<Object>} selectedSpritesForSheet - Array of sprite objects { uniqueId, blob, sourceImageData, sourceImageId }.
  * @param {number} cols - Number of columns in the grid.
  * @param {number} padding - Padding between sprites in pixels.
- * @param {string} alignment - Sprite alignment within cells ('top-left', 'center').
+ * @param {string} alignH - Horizontal sprite alignment within cells ('left', 'center', 'right').
+ * @param {string} alignV - Vertical sprite alignment within cells ('top', 'center', 'bottom').
  * @returns {Promise<HTMLCanvasElement>} A promise that resolves with the canvas containing the generated spritesheet.
  */
-export async function generateSpritesheet(selectedSpritesForSheet, cols, padding, alignment) {
+export async function generateSpritesheet(selectedSpritesForSheet, cols, padding, alignH, alignV) {
     return new Promise(async (resolve, reject) => {
         if (!selectedSpritesForSheet || selectedSpritesForSheet.length === 0) {
             reject(new Error("Cannot generate spritesheet: No sprites selected."));
@@ -124,17 +126,30 @@ export async function generateSpritesheet(selectedSpritesForSheet, cols, padding
             const cellY = row * cellHeight;
 
             // Calculate sprite's top-left position within the cell based on alignment and padding
-            let spriteDestX = cellX + padding;
-            let spriteDestY = cellY + padding;
+            let spriteDestX = cellX + padding; // Default to left alignment + padding
+            let spriteDestY = cellY + padding; // Default to top alignment + padding
 
-            if (alignment === 'center') {
+            // Apply Horizontal Alignment
+            if (alignH === 'center') {
                 spriteDestX += Math.floor((maxSpriteWidth - bounds.width) / 2);
-                spriteDestY += Math.floor((maxSpriteHeight - bounds.height) / 2);
+            } else if (alignH === 'right') {
+                spriteDestX = cellX + cellWidth - padding - bounds.width;
             }
+             // Ensure X is not negative if calculation is weird
+            spriteDestX = Math.max(cellX, spriteDestX);
+
+            // Apply Vertical Alignment
+            if (alignV === 'center') {
+                spriteDestY += Math.floor((maxSpriteHeight - bounds.height) / 2);
+            } else if (alignV === 'bottom') {
+                spriteDestY = cellY + cellHeight - padding - bounds.height;
+            }
+            // Ensure Y is not negative
+            spriteDestY = Math.max(cellY, spriteDestY);
 
             // Ensure source coordinates and dimensions are valid within the specific source canvas
-            const sourceX = Math.max(0, bounds.minX);
-            const sourceY = Math.max(0, bounds.minY);
+            const sourceX = Math.max(0, Math.round(bounds.minX)); // Use rounded source coords
+            const sourceY = Math.max(0, Math.round(bounds.minY));
             // Clamp width/height to prevent reading outside source image bounds
             const sourceWidth = Math.min(bounds.width, sourceCanvas.width - sourceX);
             const sourceHeight = Math.min(bounds.height, sourceCanvas.height - sourceY);
@@ -160,7 +175,7 @@ export async function generateSpritesheet(selectedSpritesForSheet, cols, padding
                     sourceHeight  // Destination Height (use actual sprite height)
                 );
             } catch (e) {
-                console.error(`Error drawing sprite ${uniqueId} from source ${sourceImageId} [${sourceX},${sourceY} ${sourceWidth}x${sourceHeight}] to dest [${spriteDestX},${spriteDestY}]:`, e);
+                console.error(`Error drawing sprite ${uniqueId} from source ${sourceImageId} [${sourceX},${sourceY} ${sourceWidth}x${sourceHeight}] to dest [${Math.round(spriteDestX)},${Math.round(spriteDestY)}]:`, e);
                 // Optionally, draw a placeholder
                 // drawPlaceholder(ctx, spriteDestX, spriteDestY, sourceWidth, sourceHeight, "Draw Error");
             }
