@@ -13,18 +13,8 @@ function checkCompatibility() {
         // Not critical for initial version, but good to know
         console.warn('Web Workers are not supported in this browser. Performance may be impacted for large images.');
     }
-     // Check for transferable ArrayBuffer support for ImageData (more robust check)
-     try {
-        const ab = new ArrayBuffer(1);
-        new MessageChannel().port1.postMessage(ab, [ab]);
-        if (ab.byteLength !== 0) {
-             throw new Error("Transferable ArrayBuffer check failed byteLength");
-        }
-        // Also check if ImageData itself can be transferred (less common support)
-        // const id = new ImageData(1,1);
-        // new MessageChannel().port1.postMessage(id, [id]); // This might throw if not supported
-     } catch(e) {
-         console.warn('Transferable ArrayBuffer or MessageChannel might not be fully supported. Performance may be impacted.', e);
+     if (typeof new ImageData(1,1).data.buffer === 'undefined') {
+         console.warn('Transferable ImageData buffer might not be supported. Performance may be impacted.');
      }
 
 

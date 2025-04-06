@@ -30,7 +30,7 @@ let thresholdSlider, thresholdValueSpan, minSizeSlider, minSizeValueSpan;
 let debugViewCheckboxes, debugOverlayCheckboxes; // Collections of checkboxes
 let processButton, processingStatusDiv;
 let gridColsInput, paddingInput, alignmentSelect;
-let previewSpritesheetButton, spritesheetPreviewCanvas, spritesheetPreviewContainer, downloadSpritesheetButton;
+let generateSpritesheetButton, spritesheetPreviewCanvas, spritesheetPreviewContainer, downloadSpritesheetButton;
 let zoomInButton, zoomOutButton;
 
 
@@ -53,8 +53,7 @@ export function initUI() {
     gridColsInput = document.getElementById('grid-cols-input');
     paddingInput = document.getElementById('padding-input');
     alignmentSelect = document.getElementById('alignment-select');
-    // Renamed preview button to generate button
-    previewSpritesheetButton = document.getElementById('preview-spritesheet-button');
+    generateSpritesheetButton = document.getElementById('generate-spritesheet-button');
     spritesheetPreviewCanvas = document.getElementById('spritesheet-preview-canvas');
     spritesheetPreviewContainer = document.getElementById('spritesheet-preview-container');
     downloadSpritesheetButton = document.getElementById('download-spritesheet-button');
@@ -77,7 +76,7 @@ export function initUI() {
     paddingInput.addEventListener('change', handleSpritesheetSettingsChange);
     alignmentSelect.addEventListener('change', handleSpritesheetSettingsChange);
 
-    previewSpritesheetButton.addEventListener('click', handleGenerateSpritesheet); // Changed name
+    generateSpritesheetButton.addEventListener('click', handleGenerateSpritesheet);
     downloadSpritesheetButton.addEventListener('click', handleDownloadSpritesheet);
 
     // Zoom and Pan Listeners
@@ -141,11 +140,17 @@ function handleThresholdChange() {
     clearGeneratedSpritesheet();
     // Update view immediately ONLY if threshold view is active
     if (document.getElementById('show-threshold-checkbox').checked) {
-        updateDebugView(); // Regenerate thresholded view if needed
+        // Indicate processing is needed again, rather than auto-updating view here
+        // This avoids potentially slow re-processing on every slider move.
+        processingStatusDiv.textContent = "Threshold changed. Click 'Detect Sprites' to update results.";
+        // Alternatively, could call updateDebugView() but requires re-thresholding first.
     }
      // BBoxes depend on threshold, so clear them if shown
     if (document.getElementById('show-bboxes-checkbox').checked) {
          clearOverlays(debugOverlaysContainer); // Clear bounding box overlays
+         if (detectedBlobs.length > 0) { // Only show message if there were blobs before
+            processingStatusDiv.textContent = "Threshold changed. Click 'Detect Sprites' to update bounding boxes.";
+         }
      }
 
 }
@@ -160,9 +165,8 @@ function handleMinSizeChange() {
      clearGeneratedSpritesheet();
     // Update bounding box overlay immediately if shown, requires re-running CCL
      if (document.getElementById('show-bboxes-checkbox').checked) {
-         // Ideally, we'd just refilter blobs, but for simplicity now,
-         // indicate processing is needed again or clear overlays.
-         clearOverlays(debugOverlaysContainer); // Clear bounding box overlays
+         // Clear overlays and indicate reprocessing is needed
+         clearOverlays(debugOverlaysContainer);
          processingStatusDiv.textContent = "Min size changed. Click 'Detect Sprites' to update results.";
      }
 
@@ -266,32 +270,39 @@ function updateDebugView() {
     const height = originalImageData.height;
 
     let imageDataToShow = originalImageData; // Default to original
+    let viewMessage = null; // Message if data is missing
 
     if (document.getElementById('show-grayscale-checkbox').checked) {
         if (!grayscaleImageData) {
-            console.warn("Grayscale data requested but not generated. Run 'Detect Sprites' first.");
-             processingStatusDiv.textContent = "Grayscale view requires 'Detect Sprites'.";
-             // Optionally fall back to original or do nothing
+            viewMessage = "Grayscale data not generated. Click 'Detect Sprites'.";
         } else {
             imageDataToShow = grayscaleImageData;
         }
     } else if (document.getElementById('show-threshold-checkbox').checked) {
          if (!thresholdedImageData) {
-            console.warn("Thresholded data requested but not generated. Run 'Detect Sprites' first.");
-             processingStatusDiv.textContent = "Threshold view requires 'Detect Sprites'.";
+            viewMessage = "Thresholded data not generated. Click 'Detect Sprites'.";
         } else {
             imageDataToShow = thresholdedImageData;
         }
     } else if (document.getElementById('show-ccl-checkbox').checked) {
          if (!cclResult || !cclResult.labels) {
-            console.warn("CCL data requested but not generated. Run 'Detect Sprites' first.");
-            processingStatusDiv.textContent = "CCL view requires 'Detect Sprites'.";
+            viewMessage = "CCL data not generated. Click 'Detect Sprites'.";
         } else {
             // Generate colored label image on demand
              imageDataToShow = getLabeledImageData(cclResult.labels, width, height);
         }
     }
      // else: No view checkbox checked, imageDataToShow remains originalImageData
+
+    // Display message if required data is missing for the selected view
+    if (viewMessage) {
+        console.warn(viewMessage);
+        processingStatusDiv.textContent = viewMessage;
+        // Optionally, revert to original image view if data is missing
+        imageDataToShow = originalImageData;
+        // Or just leave the canvas as is, showing the previous valid view
+    }
+
 
     // Redraw the base image on the canvas using the selected ImageData
     // Ensure canvas size matches image data dimensions before drawing
@@ -309,8 +320,6 @@ function updateDebugView() {
     ctx.drawImage(tempCanvas, 0, 0);
 
     console.log("Debug view updated.");
-     // Note: This redraws the canvas, zoom/pan transform needs to be reapplied by updateImageDisplay if called separately
-     // Or ensure updateImageDisplay is called after this if needed. Currently called on zoom/pan actions.
 }
 
 
@@ -325,14 +334,19 @@ function updateDebugOverlays() {
              drawBoundingBoxes(debugOverlaysContainer, detectedBlobs.map(b => b.bounds), 'red');
         } else {
              console.log("Bounding box overlay enabled, but no blobs detected or processed yet.");
-              processingStatusDiv.textContent = "Bounding box view requires 'Detect Sprites'.";
+             // Only show message if checkbox is checked but no blobs exist *after* processing
+             if (cclResult) { // Check if processing has run at least once
+                processingStatusDiv.textContent = "No sprites found meeting current criteria.";
+             } else {
+                processingStatusDiv.textContent = "Bounding box view requires 'Detect Sprites'.";
+             }
         }
      }
      console.log("Debug overlays updated.");
 }
 
 
-// Generates and displays the spritesheet
+// Generates and displays the spritesheet - Renamed handler
 async function handleGenerateSpritesheet() {
      if (!detectedBlobs || detectedBlobs.length === 0) {
         alert("No sprites detected. Click 'Detect Sprites' first.");
@@ -352,14 +366,17 @@ async function handleGenerateSpritesheet() {
     const alignment = alignmentSelect.value;
 
     try {
-        // generateSpritesheet now returns the canvas element
-        generatedSpritesheetCanvas = await generateSpritesheet(
+        // generateSpritesheet now returns the canvas element directly
+        const resultCanvas = await generateSpritesheet(
             originalImageData,
             detectedBlobs,
             cols,
             padding,
             alignment
         );
+
+        // Store the generated canvas
+        generatedSpritesheetCanvas = resultCanvas;
 
         // Display the generated canvas in the preview area
         const previewCtx = spritesheetPreviewCanvas.getContext('2d');
@@ -522,35 +539,40 @@ function updateImageDisplay() {
 
 // Disables/enables controls that shouldn't be active without an image or during processing
 function disableControls(disabled) {
+    const imageLoaded = !!originalImageInfo;
+
     // Settings
-    thresholdSlider.disabled = disabled;
-    minSizeSlider.disabled = disabled;
-    // Debug toggles (allow toggling even if processing needed again)
-    // debugViewCheckboxes.forEach(cb => cb.disabled = disabled);
-    // debugOverlayCheckboxes.forEach(cb => cb.disabled = disabled);
+    thresholdSlider.disabled = disabled || !imageLoaded;
+    minSizeSlider.disabled = disabled || !imageLoaded;
+
+    // Debug toggles (allow toggling if image loaded, even if processing needed again)
+    debugViewCheckboxes.forEach(cb => cb.disabled = !imageLoaded);
+    debugOverlayCheckboxes.forEach(cb => cb.disabled = !imageLoaded);
 
     // Actions
-    processButton.disabled = disabled;
-    previewSpritesheetButton.disabled = disabled; // Generate button
+    processButton.disabled = disabled || !imageLoaded;
+    generateSpritesheetButton.disabled = disabled || !imageLoaded; // Generate button
 
-    // Spritesheet Generation Settings (allow changing anytime, effect requires regenerate)
-    // gridColsInput.disabled = disabled;
-    // paddingInput.disabled = disabled;
-    // alignmentSelect.disabled = disabled;
+    // Spritesheet Generation Settings (allow changing if image loaded)
+    gridColsInput.disabled = disabled || !imageLoaded;
+    paddingInput.disabled = disabled || !imageLoaded;
+    alignmentSelect.disabled = disabled || !imageLoaded;
 
     // Download button state is managed separately based on generation success
-     if (disabled) {
+     if (disabled || !generatedSpritesheetCanvas) { // Disable if processing, or no sheet exists
          downloadSpritesheetButton.disabled = true;
      } else {
-         // Only re-enable download if a spritesheet actually exists
-         downloadSpritesheetButton.disabled = !generatedSpritesheetCanvas;
+         downloadSpritesheetButton.disabled = false; // Enable only if not disabled and sheet exists
      }
 
 
      // Zoom controls only active if image loaded
-     const imageLoaded = !!originalImageInfo;
     zoomInButton.disabled = disabled || !imageLoaded;
     zoomOutButton.disabled = disabled || !imageLoaded;
+
+    // Make file input available unless actively processing
+    imageUploadInput.disabled = disabled && imageLoaded; // Only disable during processing *after* load
+
 }
 
 // Clears all processing results and generated data, keeps original image if loaded
@@ -571,6 +593,14 @@ function clearProcessingResults() {
          imagePreviewCanvas.width = originalImageData.width;
          imagePreviewCanvas.height = originalImageData.height;
          ctx.putImageData(originalImageData, 0, 0);
+          // Re-apply zoom/pan to the restored original image view
+         updateImageDisplay();
+     } else {
+         // If no original image, clear canvas fully
+         const ctx = imagePreviewCanvas.getContext('2d');
+         ctx.clearRect(0, 0, imagePreviewCanvas.width, imagePreviewCanvas.height);
+         imagePreviewCanvas.width = 1;
+         imagePreviewCanvas.height = 1;
      }
 }
 
@@ -581,16 +611,18 @@ function clearStateBeforeLoad() {
      originalImageData = null;
      clearProcessingResults(); // Clear derived data
 
-    // Clear canvas
+    // Clear canvas visually and reset transform
     if (imagePreviewCanvas) {
         const ctx = imagePreviewCanvas.getContext('2d');
+        imagePreviewCanvas.style.transform = ''; // Reset transform first
         ctx.clearRect(0, 0, imagePreviewCanvas.width, imagePreviewCanvas.height);
          // Reset dimensions to avoid showing old scaled canvas visually
         imagePreviewCanvas.width = 1;
         imagePreviewCanvas.height = 1;
-         imagePreviewCanvas.style.transform = ''; // Reset transform
     }
+    // Clear overlay container and reset transform
     if (debugOverlaysContainer) {
+        clearOverlays(debugOverlaysContainer); // Clear content
         debugOverlaysContainer.style.transform = ''; // Reset transform
         debugOverlaysContainer.style.width = '0px';
         debugOverlaysContainer.style.height = '0px';
@@ -599,7 +631,7 @@ function clearStateBeforeLoad() {
      resetZoomPan(); // Reset zoom/pan values
 
      // Reset UI elements
-    // imageUploadInput.value = ''; // Don't clear this, user might retry same file
+    // imageUploadInput.value = ''; // Keep file input value
     processingStatusDiv.textContent = 'Upload an image to start.';
 }
 

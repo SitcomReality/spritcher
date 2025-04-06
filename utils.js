@@ -1,66 +1,4 @@
 /**
- * Draws bounding boxes onto an overlay container element.
- * @param {HTMLElement} overlayContainer - The container div positioned over the canvas.
- * @param {Array<Object>} boxes - Array of box objects { minX, minY, width, height }.
- * @param {string} [color='red'] - Color of the bounding boxes.
- * @param {string} [className='bbox'] - CSS class name for the box elements.
- */
-export function drawBoundingBoxes(overlayContainer, boxes, color = 'red', className = 'bbox') {
-    // Clear existing boxes of the same class first
-    overlayContainer.querySelectorAll(`.${className}`).forEach(el => el.remove());
-
-    if (!boxes || boxes.length === 0) return;
-
-    const fragment = document.createDocumentFragment();
-    boxes.forEach((box, index) => {
-        const boxDiv = document.createElement('div');
-        boxDiv.className = className; // Add the general class
-         // Add a specific class if needed e.g., `bbox-${index}`
-         // boxDiv.classList.add(`bbox-${index}`);
-        boxDiv.style.position = 'absolute';
-        boxDiv.style.left = `${box.minX}px`;
-        boxDiv.style.top = `${box.minY}px`;
-        boxDiv.style.width = `${box.width}px`;
-        boxDiv.style.height = `${box.height}px`;
-        boxDiv.style.border = `1px solid ${color}`;
-        boxDiv.style.boxSizing = 'border-box'; // Ensure border is included in size
-         boxDiv.style.pointerEvents = 'none'; // Prevent interference with canvas interaction
-
-         // Optional: Add label (e.g., index or ID)
-         // const labelSpan = document.createElement('span');
-         // labelSpan.textContent = index;
-         // labelSpan.style.position = 'absolute';
-         // labelSpan.style.top = '-12px'; // Position above the box
-         // labelSpan.style.left = '0';
-         // labelSpan.style.fontSize = '10px';
-         // labelSpan.style.color = color;
-         // labelSpan.style.backgroundColor = 'rgba(255, 255, 255, 0.7)';
-         // boxDiv.appendChild(labelSpan);
-
-        fragment.appendChild(boxDiv);
-    });
-    overlayContainer.appendChild(fragment);
-}
-
-
-/**
- * Clears all elements (like bounding boxes or other overlays) from a container.
- * @param {HTMLElement} overlayContainer - The container element.
- */
-export function clearOverlays(overlayContainer) {
-    if (overlayContainer) {
-        overlayContainer.innerHTML = ''; // Remove all child elements
-    }
-}
-
-
-// Add other potential utility functions here as needed:
-// - IoU calculation
-// - Color conversion helpers (if not handled elsewhere)
-// - Benchmarking helpers
-// - Pixel-level comparison logic (if ground truth data becomes available)
-
-/**
  * Draws bounding boxes as div elements onto an overlay container.
  * Assumes the container is positioned absolutely over the main image canvas
  * and shares the same CSS transform for zoom/pan.
@@ -126,4 +64,3 @@ export function clearOverlays(overlayContainer) {
         }
     }
 }
-
