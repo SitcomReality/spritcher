@@ -187,30 +187,47 @@ function drawResizeHandles(blob) {
 }
 
 // ui-controller.js
-let isDragging = false;
+let isDraggingHandle = false;
+let currentDragHandleType = null;
 let dragStartX, dragStartY;
+let initialDragBounds = null;
 
 document.getElementById('resize-handles-container').addEventListener('mousedown', (event) => {
     if (event.target.style.background === 'red') {
-        isDragging = true;
+        isDraggingHandle = true;
+        currentDragHandleType = event.target.dataset.handleType;
         dragStartX = event.clientX;
         dragStartY = event.clientY;
+        initialDragBounds = JSON.parse(JSON.stringify(detectedBlobs[selectedBlobIndex].bounds));
     }
 });
 
 document.addEventListener('mousemove', (event) => {
-    if (isDragging) {
+    if (isDraggingHandle) {
         const newX = event.clientX;
         const newY = event.clientY;
         const delta_x = newX - dragStartX;
         const delta_y = newY - dragStartY;
 
         // Update the blob bounds
-        const blob = blobs[0];
-        blob.bounds.x += delta_x;
-        blob.bounds.y += delta_y;
-        blob.bounds.width += delta_x;
-        blob.bounds.height += delta_y;
+        const blob = detectedBlobs[selectedBlobIndex];
+        if (currentDragHandleType === 'top-left') {
+            blob.bounds.x += delta_x;
+            blob.bounds.y += delta_y;
+            blob.bounds.width -= delta_x;
+            blob.bounds.height -= delta_y;
+        } else if (currentDragHandleType === 'top-right') {
+            blob.bounds.y += delta_y;
+            blob.bounds.width += delta_x;
+            blob.bounds.height -= delta_y;
+        } else if (currentDragHandleType === 'bottom-left') {
+            blob.bounds.x += delta_x;
+            blob.bounds.width -= delta_x;
+            blob.bounds.height += delta_y;
+        } else if (currentDragHandleType === 'bottom-right') {
+            blob.bounds.width += delta_x;
+            blob.bounds.height += delta_y;
+        }
 
         // Update the visual box div styles
         const boundingBox = document.querySelector('[data-blob-index="0"]');
@@ -218,9 +235,120 @@ document.addEventListener('mousemove', (event) => {
         boundingBox.style.top = `${blob.bounds.y}px`;
         boundingBox.style.width = `${blob.bounds.width}px`;
         boundingBox.style.height = `${blob.bounds.height}px`;
+
+        drawEditingOverlays();
     }
 });
 
 document.addEventListener('mouseup', () => {
-    isDragging = false;
+    isDraggingHandle = false;
+    currentDragHandleType = null;
+    dragStartX = null;
+    dragStartY = null;
+    initialDragBounds = null;
 });
+
+// ui-controller.js
+function handleEditingOverlayMouseDown(event) {
+    if (event.target.style.background === 'red') {
+        isDraggingHandle = true;
+        currentDragHandleType = event.target.dataset.handleType;
+        dragStartX = event.clientX;
+        dragStartY = event.clientY;
+        initialDragBounds = JSON.parse(JSON.stringify(detectedBlobs[selectedBlobIndex].bounds));
+    }
+}
+
+// ui-controller.js
+function drawEditingOverlays() {
+    const editingOverlaysContainer = document.getElementById('editing-overlays');
+    editingOverlaysContainer.innerHTML = '';
+
+    const blob = detectedBlobs[selectedBlobIndex];
+    const boundingBox = document.createElement('div');
+    boundingBox.style.position = 'absolute';
+    boundingBox.style.left = `${blob.bounds.x}px`;
+    boundingBox.style.top = `${blob.bounds.y}px`;
+    boundingBox.style.width = `${blob.bounds.width}px`;
+    boundingBox.style.height = `${blob.bounds.height}px`;
+    boundingBox.style.border = '1px solid red';
+    editingOverlaysContainer.appendChild(boundingBox);
+
+    drawResizeHandles(blob);
+}
+
+// ui-controller.js
+function addBoxModeMouseDown(event) {
+    const newX = event.clientX;
+    const newY = event.clientY;
+    const startDragX = newX;
+    const startDragY = newY;
+
+    document.addEventListener('mousemove', (event) => {
+        const currentX = event.clientX;
+        const currentY = event.clientY;
+        const width = currentX - startDragX;
+        const height = currentY - startDragY;
+
+        const box = document.createElement('div');
+        box.style.position = 'absolute';
+        box.style.left = `${startDragX}px`;
+        box.style.top = `${startDragY}px`;
+        box.style.width = `${width}px`;
+        box.style.height = `${height}px`;
+        box.style.border = '1px solid red';
+
+        document.getElementById('editing-overlays').appendChild(box);
+    });
+
+    document.addEventListener('mouseup', () => {
+        const box = document.querySelector('#editing-overlays > div:last-child');
+        const bounds = {
+            x: parseInt(box.style.left),
+            y: parseInt(box.style.top),
+            width: parseInt(box.style.width),
+            height: parseInt(box.style.height)
+        };
+
+        detectedBlobs.push({ bounds: bounds });
+        drawEditingOverlays();
+    });
+}
+
+// ui-controller.js
+function deleteModeClick() {
+    if (selectedBlobIndex !== null) {
+        detectedBlobs.splice(selectedBlobIndex, 1);
+        selectedBlobIndex = null;
+        drawEditingOverlays();
+    }
+}
+
+// spritesheet-generator.js
+function generateSpritesheet(blobs, enablePaletteReduction, numColors) {
+    const targetCanvas = document.getElementById('target-canvas');
+    const targetCtx = targetCanvas.getContext('2d');
+
+    blobs.forEach((blob, index) => {
+        const sourceX = blob.bounds.x;
+        const sourceY = blob.bounds.y;
+        const sourceWidth = blob.bounds.width;
+        const sourceHeight = blob.bounds.height;
+
+        const extractedSpriteData = sourceCtx.getImageData(sourceX, sourceY, sourceWidth, sourceHeight);
+
+        if (enablePaletteReduction) {
+            const quantizedSpriteData = quantizeImageData(extractedSpriteData, numColors);
+
+            const temporaryCanvas = document.createElement('canvas');
+            temporaryCanvas.width = sourceWidth;
+            temporaryCanvas.height = sourceHeight;
+            const temporaryCtx = temporaryCanvas.getContext('2d');
+            temporaryCtx.putImageData(quantizedSpriteData, 0, 0);
+
+            targetCtx.drawImage(temporaryCanvas, sourceX, sourceY);
+        } else {
+            targetCtx.drawImage(sourceCanvas, sourceX, sourceY, sourceWidth, sourceHeight, spriteDestX, spriteDestY, sourceWidth, sourceHeight);
+        }
+    });
+}

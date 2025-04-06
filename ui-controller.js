@@ -12,6 +12,7 @@ let thresholdedImageData = null;
 let cclResult = null; // { blobs: Array<Object>, labels: Int32Array }
 let detectedBlobs = []; // Holds the current list of blobs (can be modified by editing tools)
 let generatedSpritesheetCanvas = null; // Store the generated canvas
+let selectedBlobIndex = null; // Index in the `detectedBlobs` array
 
 let currentThresholdSettings = {
     type: 'manual',
@@ -32,23 +33,18 @@ let startViewY = 0; // panY at pan start
 
 // Editing State
 let currentEditMode = 'pan'; // 'pan', 'select', 'edit-bounds', 'add', 'split', 'merge', 'delete'
-let selectedBlobIndex = null; // Index in the `detectedBlobs` array
-
 
 // --- DOM Element References ---
-let imageUploadInput, imagePreviewCanvas, imagePreviewContainer, debugOverlaysContainer;
-let thresholdSlider, thresholdValueSpan, minSizeSlider, minSizeValueSpan;
+let imageUploadInput, imagePreviewCanvas, imagePreviewContainer, debugOverlaysContainer, editingOverlaysContainer;
+let thresholdTypeSelect, manualThresholdSettingsDiv, adaptiveThresholdSettingsDiv;
+let thresholdSlider, thresholdValueSpan, adaptiveBlocksizeInput, adaptiveCInput;
+let minSizeSlider, minSizeValueSpan;
 let debugViewCheckboxes, debugOverlayCheckboxes; // Collections of checkboxes
 let processButton, processingStatusDiv;
 let gridColsInput, paddingInput, alignmentSelect;
 let generateSpritesheetButton, spritesheetPreviewCanvas, spritesheetPreviewContainer, downloadSpritesheetButton;
 let zoomInButton, zoomOutButton;
-let thresholdTypeSelect;
-let manualThresholdSettingsDiv, adaptiveThresholdSettingsDiv;
-let adaptiveBlocksizeInput, adaptiveCInput;
-// Editing Elements
 let editingToolsSection, editToolbar, editModeButtons, editingStatusDiv;
-
 
 // --- Initialization ---
 export function initUI() {
@@ -57,6 +53,7 @@ export function initUI() {
     imagePreviewCanvas = document.getElementById('image-preview-canvas');
     imagePreviewContainer = document.getElementById('image-preview-container');
     debugOverlaysContainer = document.getElementById('debug-overlays');
+    editingOverlaysContainer = document.getElementById('editing-overlays');
     thresholdTypeSelect = document.getElementById('threshold-type-select');
     manualThresholdSettingsDiv = document.getElementById('manual-threshold-settings');
     adaptiveThresholdSettingsDiv = document.getElementById('adaptive-threshold-settings');
@@ -85,7 +82,6 @@ export function initUI() {
     editToolbar = document.getElementById('edit-toolbar');
     editModeButtons = document.querySelectorAll('.edit-mode-btn');
     editingStatusDiv = document.getElementById('editing-status');
-
 
     // Add event listeners
     imageUploadInput.addEventListener('change', handleImageUpload);
@@ -118,13 +114,15 @@ export function initUI() {
     imagePreviewContainer.addEventListener('click', handlePreviewClick);
     imagePreviewContainer.addEventListener('wheel', handleWheelZoom, { passive: false });
 
-     // Edit Mode Button Listeners
+    // Edit Mode Button Listeners
     editModeButtons.forEach(button => {
         button.addEventListener('click', () => setEditMode(button.dataset.mode));
     });
 
+    // Add specific listener for editing overlays container for handle dragging later
+    editingOverlaysContainer.addEventListener('mousedown', handleEditingOverlayMouseDown);
 
-     // Initial state updates
+    // Initial state updates
     updateThresholdSettingsUI();
     minSizeValueSpan.textContent = minSizeSlider.value;
     disableControls(true);
@@ -146,16 +144,15 @@ async function handleImageUpload() {
         originalImageData = getImageDataFromCanvas(imagePreviewCanvas);
 
         if (!originalImageData) {
-             throw new Error("Could not get image pixel data after loading.");
+            throw new Error("Could not get image pixel data after loading.");
         }
 
-        resetZoomPan();
-        updateImageDisplay();
-
+        resetZoomPan(); // This calls updateImageDisplay which now also sets editing overlay size
         processingStatusDiv.textContent = 'Image loaded. Adjust settings and click "Detect Sprites".';
         disableControls(false); // Enable basic controls
         editingToolsSection.style.display = 'none'; // Hide editing tools initially
         clearGeneratedSpritesheet();
+        clearEditingOverlays(); // Ensure no stale editing overlays
 
         console.log("Image loaded successfully.");
     } catch (error) {
@@ -191,10 +188,10 @@ function handleAdaptiveParamsChange() {
         blockSize = Math.max(3, blockSize + 1);
         adaptiveBlocksizeInput.value = blockSize;
     }
-     if (blockSize < 3) {
+    if (blockSize < 3) {
         blockSize = 3;
         adaptiveBlocksizeInput.value = 3;
-     }
+    }
     currentThresholdSettings.adaptiveBlockSize = blockSize;
     currentThresholdSettings.adaptiveC = parseInt(adaptiveCInput.value, 10);
 
@@ -210,8 +207,10 @@ function invalidateProcessingResults() {
     detectedBlobs = [];
     selectedBlobIndex = null; // Deselect any selected blob
     clearGeneratedSpritesheet();
-    clearOverlays(debugOverlaysContainer); // Clear all visual overlays
+    clearOverlays(debugOverlaysContainer); // Clear visual overlays
+    clearEditingOverlays(); // Clear editing overlays (selection, handles)
     updateDebugOverlays(); // Redraw overlays (will be empty if blobs are cleared)
+    drawEditingOverlays(); // Clear/redraw editing overlays (should be empty)
     updateEditModeUI(); // Update edit button states
     editingToolsSection.style.display = 'none'; // Hide editing tools if results invalidated
     console.log("Processing results invalidated.");
@@ -225,7 +224,7 @@ function updateThresholdSettingsUI() {
 
     // Update values displayed
     thresholdValueSpan.textContent = currentThresholdSettings.manualValue;
-    thresholdSlider.value = currentThresholdSettings.manualValue; 
+    thresholdSlider.value = currentThresholdSettings.manualValue;
     adaptiveBlocksizeInput.value = currentThresholdSettings.adaptiveBlockSize;
     adaptiveCInput.value = currentThresholdSettings.adaptiveC;
 
@@ -250,8 +249,8 @@ function handleMinSizeChange() {
 
 // Handles changes to spritesheet layout settings
 function handleSpritesheetSettingsChange() {
-     clearGeneratedSpritesheet();
-     processingStatusDiv.textContent = "Spritesheet settings changed. Click 'Generate Spritesheet' to update.";
+    clearGeneratedSpritesheet();
+    processingStatusDiv.textContent = "Spritesheet settings changed. Click 'Generate Spritesheet' to update.";
 }
 
 // Main processing pipeline triggered by button
@@ -271,7 +270,7 @@ async function handleProcessImage() {
     // --- 1. Grayscale ---
     if (!grayscaleImageData && originalImageData) {
         grayscaleImageData = getGrayscaleImageData(originalImageData);
-         console.log("Generated grayscale data.");
+        console.log("Generated grayscale data.");
     } else if (grayscaleImageData) {
         console.log("Using cached grayscale data.");
     } else {
@@ -305,13 +304,12 @@ async function handleProcessImage() {
                 throw new Error(`Unknown threshold type: ${currentThresholdSettings.type}`);
         }
     } catch (error) {
-         console.error("Error during thresholding:", error);
-         processingStatusDiv.textContent = `Error during thresholding: ${error.message}`;
-         invalidateProcessingResults();
-         disableControls(false);
-         return;
+        console.error("Error during thresholding:", error);
+        processingStatusDiv.textContent = `Error during thresholding: ${error.message}`;
+        invalidateProcessingResults();
+        disableControls(false);
+        return;
     }
-
 
     processingStatusDiv.textContent = 'Processing: Finding Blobs (CCL)...';
     await wait(10);
@@ -321,13 +319,13 @@ async function handleProcessImage() {
     const startTime = performance.now();
     try {
         if (!thresholdedImageData) {
-             throw new Error("Thresholding step failed, cannot perform CCL.");
+            throw new Error("Thresholding step failed, cannot perform CCL.");
         }
         cclResult = findBlobs(thresholdedImageData, minSize);
         // IMPORTANT: Copy blobs so editing doesn't modify the raw CCL result directly
-        detectedBlobs = cclResult ? cclResult.blobs.map(b => ({ ...b, bounds: {...b.bounds} })) : [];
+        detectedBlobs = cclResult ? cclResult.blobs.map(b => ({ ...b, bounds: { ...b.bounds } })) : [];
         selectedBlobIndex = null; // Reset selection after processing
-    } catch(error) {
+    } catch (error) {
         console.error("Error during blob detection:", error);
         processingStatusDiv.textContent = `Error during blob detection: ${error.message}`;
         invalidateProcessingResults();
@@ -340,14 +338,15 @@ async function handleProcessImage() {
     processingStatusDiv.textContent = `Processing complete. Found ${detectedBlobs.length} sprites. Ready to generate spritesheet or edit sprites.`;
     disableControls(false);
     clearGeneratedSpritesheet();
+    clearEditingOverlays(); // Clear any previous editing overlays
 
     // Show editing tools if blobs were found
     editingToolsSection.style.display = detectedBlobs.length > 0 ? 'block' : 'none';
 
-
     // --- 4. Update Debug Views/Overlays ---
-    updateDebugView();
-    updateDebugOverlays(); // Will now draw editable blobs if checkbox is checked
+    updateDebugView(); // Redraw base canvas image
+    updateDebugOverlays(); // Redraw debug boxes in their layer
+    drawEditingOverlays(); // Draw selection/handles in their layer (will be empty initially)
     updateEditModeUI(); // Enable/disable edit buttons based on results
 
     console.log("Processing pipeline finished.");
@@ -362,19 +361,19 @@ function handleDebugViewChange(event) {
             }
         });
     }
-    updateDebugView(); 
+    updateDebugView();
 }
 
 // Update the main canvas based on which debug VIEW checkbox is checked
 function updateDebugView() {
-    if (!originalImageData) return; 
+    if (!originalImageData) return;
 
     const ctx = imagePreviewCanvas.getContext('2d');
     const width = originalImageData.width;
     const height = originalImageData.height;
 
-    let imageDataToShow = originalImageData; 
-    let viewMessage = null; 
+    let imageDataToShow = originalImageData;
+    let viewMessage = null;
 
     if (document.getElementById('show-grayscale-checkbox').checked) {
         if (!grayscaleImageData) {
@@ -383,19 +382,19 @@ function updateDebugView() {
             imageDataToShow = grayscaleImageData;
         }
     } else if (document.getElementById('show-threshold-checkbox').checked) {
-         if (!thresholdedImageData) {
+        if (!thresholdedImageData) {
             viewMessage = "Thresholded data not generated. Click 'Detect Sprites'.";
         } else {
             imageDataToShow = thresholdedImageData;
         }
     } else if (document.getElementById('show-ccl-checkbox').checked) {
-         if (!cclResult || !cclResult.labels) {
+        if (!cclResult || !cclResult.labels) {
             viewMessage = "CCL data not generated. Click 'Detect Sprites'.";
         } else {
             imageDataToShow = getLabeledImageData(cclResult.labels, width, height);
         }
     }
-     // else: No view checkbox checked, imageDataToShow remains originalImageData
+    // else: No view checkbox checked, imageDataToShow remains originalImageData
 
     // Display message if required data is missing for the selected view
     if (viewMessage) {
@@ -414,7 +413,7 @@ function updateDebugView() {
     const tempCtx = tempCanvas.getContext('2d');
     tempCtx.putImageData(imageDataToShow, 0, 0);
 
-    ctx.clearRect(0, 0, width, height); 
+    ctx.clearRect(0, 0, width, height);
     ctx.drawImage(tempCanvas, 0, 0);
 
     console.log("Debug view updated.");
@@ -422,45 +421,45 @@ function updateDebugView() {
 
 // Update overlays (bounding boxes) based on checkbox state and detectedBlobs
 function updateDebugOverlays() {
-     console.log("Updating debug overlays...");
-     // Always clear previous overlays managed by this function
-     clearOverlays(debugOverlaysContainer); // Clear everything inside the overlay container
+    console.log("Updating debug overlays...");
+    // Always clear previous overlays managed by this function
+    clearOverlays(debugOverlaysContainer); // Clear everything inside the debug overlay container
 
-     const showBBoxes = document.getElementById('show-bboxes-checkbox').checked;
+    const showBBoxes = document.getElementById('show-bboxes-checkbox').checked;
 
-     if (showBBoxes && detectedBlobs && detectedBlobs.length > 0) {
-         console.log(`Drawing ${detectedBlobs.length} editable bounding boxes.`);
-         drawBoundingBoxes(debugOverlaysContainer, detectedBlobs.map(b => b.bounds), {
-             className: 'editable-bbox',
-             color: 'blue',
-             pointerEvents: 'auto', // Make them interactive
-             borderWidth: 2,
-             dataAttributes: {
-                 // Use a function to ensure index is correct at time of drawing
-                 blobIndex: (box, index) => index
-             }
-         });
-         highlightSelectedBlob(); // Re-apply selection highlight if any blob is selected
-     } else {
-         console.log("Editable bounding box overlay not shown (checkbox off or no blobs).");
-     }
-     console.log("Debug overlays updated.");
+    if (showBBoxes && detectedBlobs && detectedBlobs.length > 0) {
+        console.log(`Drawing ${detectedBlobs.length} base bounding boxes.`);
+        // Draw the basic blue boxes for *all* detected blobs
+        drawBoundingBoxes(debugOverlaysContainer, detectedBlobs.map(b => b.bounds), {
+            className: 'editable-bbox', // Keep this class for potential styling/identification
+            color: 'blue', // Basic color
+            pointerEvents: 'auto', // Needs to be clickable for selection mode IF selection happens here
+            borderWidth: 2,
+            dataAttributes: {
+                blobIndex: (box, index) => index // Add index for potential selection click handling
+            }
+        });
+    } else {
+        console.log("Base bounding box overlay not shown (checkbox off or no blobs).");
+    }
+    console.log("Debug overlays updated.");
+    // Note: Selection highlighting is now handled by drawEditingOverlays
 }
 
-// Generates and displays the spritesheet 
+// Generates and displays the spritesheet
 async function handleGenerateSpritesheet() {
-     if (!detectedBlobs || detectedBlobs.length === 0) {
+    if (!detectedBlobs || detectedBlobs.length === 0) {
         alert("No sprites detected. Click 'Detect Sprites' first.");
         return;
     }
     if (!originalImageData) {
-         alert("Original image data is missing. Please re-upload.");
-         return;
+        alert("Original image data is missing. Please re-upload.");
+        return;
     }
 
     console.log("Generating spritesheet...");
     processingStatusDiv.textContent = 'Generating spritesheet...';
-    disableControls(true); 
+    disableControls(true);
 
     const cols = parseInt(gridColsInput.value, 10) || 8;
     const padding = parseInt(paddingInput.value, 10) || 0;
@@ -480,36 +479,36 @@ async function handleGenerateSpritesheet() {
         const previewCtx = spritesheetPreviewCanvas.getContext('2d');
         spritesheetPreviewCanvas.width = generatedSpritesheetCanvas.width;
         spritesheetPreviewCanvas.height = generatedSpritesheetCanvas.height;
-        previewCtx.clearRect(0, 0, generatedSpritesheetCanvas.width, generatedSpritesheetCanvas.height); 
+        previewCtx.clearRect(0, 0, generatedSpritesheetCanvas.width, generatedSpritesheetCanvas.height);
         previewCtx.drawImage(generatedSpritesheetCanvas, 0, 0);
 
         processingStatusDiv.textContent = `Spritesheet generated (${detectedBlobs.length} sprites). Ready to download.`;
-        downloadSpritesheetButton.disabled = false; 
+        downloadSpritesheetButton.disabled = false;
         console.log("Spritesheet generation and preview complete.");
 
     } catch (error) {
         console.error("Spritesheet generation failed:", error);
         processingStatusDiv.textContent = `Error generating spritesheet: ${error.message}`;
         alert(`Error generating spritesheet: ${error.message}`);
-        clearGeneratedSpritesheet(); 
+        clearGeneratedSpritesheet();
     } finally {
-        disableControls(false); 
+        disableControls(false);
     }
 }
 
 // Prepares the spritesheet for download as a PNG
 function handleDownloadSpritesheet() {
     if (!generatedSpritesheetCanvas) {
-         alert("Please generate the spritesheet first using the 'Generate Spritesheet' button.");
+        alert("Please generate the spritesheet first using the 'Generate Spritesheet' button.");
         return;
     }
-     console.log("Preparing spritesheet download...");
+    console.log("Preparing spritesheet download...");
     let filename = 'spritcher_spritesheet.png';
     if (imageUploadInput.files && imageUploadInput.files[0]) {
-         const originalName = imageUploadInput.files[0].name;
-         const baseName = originalName.substring(0, originalName.lastIndexOf('.')) || originalName;
-         filename = `${baseName}_spritesheet.png`;
-     }
+        const originalName = imageUploadInput.files[0].name;
+        const baseName = originalName.substring(0, originalName.lastIndexOf('.')) || originalName;
+        filename = `${baseName}_spritesheet.png`;
+    }
 
     downloadCanvasAsPNG(generatedSpritesheetCanvas, filename);
 }
@@ -517,8 +516,10 @@ function handleDownloadSpritesheet() {
 // --- Editing Mode ---
 
 function setEditMode(newMode) {
-    console.log("Setting edit mode to:", newMode);
+    // If switching away from 'edit-bounds', clear handles but keep selection highlight
+    const oldMode = currentEditMode;
     currentEditMode = newMode;
+    console.log(`Setting edit mode from ${oldMode} to: ${newMode}`);
 
     // Update button active states
     editModeButtons.forEach(button => {
@@ -526,87 +527,136 @@ function setEditMode(newMode) {
     });
 
     // Update container class for cursor styling
-    imagePreviewContainer.classList.remove('pan-mode', 'select-mode', 'grabbing'); // Add other modes later
+    imagePreviewContainer.classList.remove('pan-mode', 'select-mode', 'edit-bounds-mode', 'grabbing'); // Add other modes later
     if (newMode === 'pan') {
         imagePreviewContainer.classList.add('pan-mode');
     } else if (newMode === 'select') {
         imagePreviewContainer.classList.add('select-mode');
-    } // Add else if for other modes...
-
-    // Update status message and potentially disable selection
-    updateEditingStatus();
-    if (newMode !== 'select') {
-        // selectedBlobIndex = null; // Deselect when switching away from select mode? Optional.
-        // highlightSelectedBlob();
+    } else if (newMode === 'edit-bounds') {
+        imagePreviewContainer.classList.add('edit-bounds-mode');
     }
+    // Add else if for other modes...
+
+    // Update status message and redraw editing overlays (handles depend on mode)
+    updateEditingStatus();
+    drawEditingOverlays(); // Redraw selection and handles based on new mode
+
 }
 
+// Updates the edit mode UI based on the current state (e.g., enables edit buttons if blobs detected)
 function updateEditModeUI() {
     const hasBlobs = detectedBlobs && detectedBlobs.length > 0;
     const isBlobSelected = selectedBlobIndex !== null;
 
     editModeButtons.forEach(button => {
-         const mode = button.dataset.mode;
-         let disabled = !hasBlobs; // Most modes require blobs
+        const mode = button.dataset.mode;
+        let disabled = !hasBlobs; // Most modes require blobs
 
-         if (mode === 'pan') {
-             disabled = !originalImageInfo; // Pan only requires an image
-         } else if (mode === 'select') {
-             disabled = !hasBlobs;
-         } else if (mode === 'edit-bounds' || mode === 'delete') {
-             disabled = !hasBlobs || !isBlobSelected; // Require a selection
-         } else if (mode === 'add') {
-             disabled = !originalImageInfo; // Add only requires image context
-         }
-          else if (mode === 'split' || mode === 'merge') {
-              disabled = true; // Not implemented yet
-          }
+        if (mode === 'pan') {
+            disabled = !originalImageInfo; // Pan only requires an image
+        } else if (mode === 'select') {
+            disabled = !hasBlobs;
+        } else if (mode === 'edit-bounds' || mode === 'delete') {
+            disabled = !hasBlobs || !isBlobSelected; // Require a selection
+        } else if (mode === 'add') {
+            disabled = !originalImageInfo; // Add only requires image context
+        }
+        else if (mode === 'split' || mode === 'merge') {
+            disabled = true; // Not implemented yet
+        }
 
-
-         button.disabled = disabled;
+        button.disabled = disabled;
     });
 
-     // Ensure the 'active' class is correct after enable/disable changes
-     setEditMode(currentEditMode);
+    // Ensure the 'active' class is correct after enable/disable changes
+    setEditMode(currentEditMode);
 }
 
 function updateEditingStatus() {
-     let status = `Mode: ${currentEditMode.toUpperCase()}. `;
-     if (currentEditMode === 'select') {
-         if (selectedBlobIndex !== null) {
-             status += `Sprite ${selectedBlobIndex} selected.`;
-         } else {
-              status += `Click on a blue box to select a sprite.`;
-         }
-     } else if (currentEditMode === 'pan') {
-          status += 'Click and drag to pan, use wheel or buttons to zoom.';
-     } else if (currentEditMode === 'edit-bounds') {
-          status += isBlobSelected ? `Drag handles to resize Sprite ${selectedBlobIndex}. (Not Implemented)` : 'Select a sprite first.';
-     } else if (currentEditMode === 'add') {
-          status += 'Click and drag to draw a new sprite box. (Not Implemented)';
-     } else if (currentEditMode === 'delete') {
-         status += isBlobSelected ? `Click 'Delete' button again to confirm delete Sprite ${selectedBlobIndex}. (Not Implemented)` : 'Select a sprite first.';
-     }
+    let status = `Mode: ${currentEditMode.toUpperCase()}. `;
+    if (currentEditMode === 'select') {
+        if (selectedBlobIndex !== null) {
+            status += `Sprite ${selectedBlobIndex} selected.`;
+        } else {
+            status += `Click on a blue box to select a sprite.`;
+        }
+    } else if (currentEditMode === 'pan') {
+        status += 'Click and drag to pan, use wheel or buttons to zoom.';
+    } else if (currentEditMode === 'edit-bounds') {
+        status += isBlobSelected ? `Drag handles to resize Sprite ${selectedBlobIndex}. (Not Implemented)` : 'Select a sprite first.';
+    } else if (currentEditMode === 'add') {
+        status += 'Click and drag to draw a new sprite box. (Not Implemented)';
+    } else if (currentEditMode === 'delete') {
+        status += isBlobSelected ? `Click 'Delete' button again to confirm delete Sprite ${selectedBlobIndex}. (Not Implemented)` : 'Select a sprite first.';
+    }
 
-     editingStatusDiv.textContent = status;
+    editingStatusDiv.textContent = status;
 }
 
-// Highlight the currently selected blob
-function highlightSelectedBlob() {
-    const boxes = debugOverlaysContainer.querySelectorAll('.editable-bbox');
-    boxes.forEach((box, index) => {
-        box.classList.toggle('selected', index === selectedBlobIndex);
-    });
-    updateEditModeUI(); // Update button states based on selection
-    updateEditingStatus(); // Update text based on selection
+// --- Editing Overlays ---
+
+// Clear editing overlays (selection highlight, resize handles)
+function clearEditingOverlays() {
+    if (editingOverlaysContainer) {
+        while (editingOverlaysContainer.firstChild) {
+            editingOverlaysContainer.removeChild(editingOverlaysContainer.firstChild);
+        }
+    }
 }
 
+// Draw the selection highlight and resize handles (if applicable)
+function drawEditingOverlays() {
+    clearEditingOverlays();
+    if (!detectedBlobs || selectedBlobIndex === null || selectedBlobIndex >= detectedBlobs.length) {
+        return; // No blob selected or invalid index
+    }
+
+    const selectedBlob = detectedBlobs[selectedBlobIndex];
+    const bounds = selectedBlob.bounds;
+
+    // 1. Draw Selection Highlight
+    const highlightDiv = document.createElement('div');
+    highlightDiv.className = 'selected-box-highlight';
+    highlightDiv.style.left = `${bounds.minX}px`;
+    highlightDiv.style.top = `${bounds.minY}px`;
+    highlightDiv.style.width = `${bounds.width}px`;
+    highlightDiv.style.height = `${bounds.height}px`;
+    editingOverlaysContainer.appendChild(highlightDiv);
+
+    // 2. Draw Resize Handles (only in 'edit-bounds' mode)
+    if (currentEditMode === 'edit-bounds') {
+        const handlePositions = [
+            { x: bounds.minX, y: bounds.minY, type: 'tl' }, // Top-left
+            { x: bounds.minX + bounds.width / 2, y: bounds.minY, type: 't' }, // Top-middle
+            { x: bounds.maxX + 1, y: bounds.minY, type: 'tr' }, // Top-right (+1 because maxX is inclusive)
+            { x: bounds.minX, y: bounds.minY + bounds.height / 2, type: 'l' }, // Middle-left
+            { x: bounds.maxX + 1, y: bounds.minY + bounds.height / 2, type: 'r' }, // Middle-right
+            { x: bounds.minX, y: bounds.maxY + 1, type: 'bl' }, // Bottom-left (+1 because maxY is inclusive)
+            { x: bounds.minX + bounds.width / 2, y: bounds.maxY + 1, type: 'b' }, // Bottom-middle
+            { x: bounds.maxX + 1, y: bounds.maxY + 1, type: 'br' }  // Bottom-right
+        ];
+
+        handlePositions.forEach(pos => {
+            const handle = document.createElement('div');
+            handle.className = `resize-handle ${pos.type}`;
+            handle.style.left = `${pos.x}px`;
+            handle.style.top = `${pos.y}px`;
+            handle.dataset.handleType = pos.type; // Store handle type for drag logic
+            handle.dataset.blobIndex = selectedBlobIndex; // Associate with the blob
+            editingOverlaysContainer.appendChild(handle);
+        });
+        console.log(`Drew resize handles for blob ${selectedBlobIndex}`);
+    }
+}
 
 // --- Combined Mouse Handlers for Preview Container ---
 
 function handlePreviewMouseDown(event) {
-    // Allow middle mouse button pan regardless of mode? Maybe later.
+    // Only react to left clicks (button 0)
     if (event.button !== 0 || !originalImageInfo) return;
+
+    // Prevent default actions like text selection or image dragging
+    event.preventDefault();
 
     if (currentEditMode === 'pan') {
         isPanning = true;
@@ -615,68 +665,78 @@ function handlePreviewMouseDown(event) {
         startViewX = panX;
         startViewY = panY;
         imagePreviewContainer.classList.add('grabbing');
-        event.preventDefault(); // Prevent text selection during pan
     } else if (currentEditMode === 'select') {
-        // Handled by click, but prevent default browser drag behavior
-        event.preventDefault();
+        // Selection is handled by click, check if clicked on a box
+        const target = event.target;
+        if (target.classList.contains('editable-bbox') && target.closest('#debug-overlays')) {
+            // Clicked on a box in the debug layer
+            const indexStr = target.dataset.blobIndex;
+            if (indexStr !== undefined) {
+                const index = parseInt(indexStr, 10);
+                selectBlob(index);
+            } else {
+                selectBlob(null); // Clicked on something unexpected, deselect
+            }
+        } else if (event.target === imagePreviewContainer || event.target === imagePreviewCanvas) {
+            // Clicked directly on container background or canvas, deselect
+            selectBlob(null);
+        }
+        // Ignore clicks on editing overlays (like handles) in select mode
     }
+    // 'edit-bounds' clicks are handled by handleEditingOverlayMouseDown
     // Add logic for other modes (e.g., start drawing box in 'add' mode)
 }
 
-function handlePreviewMouseMove(event) {
-    if (isPanning && currentEditMode === 'pan') {
-        const dx = event.clientX - startPanX;
-        const dy = event.clientY - startPanY;
-        panX = startViewX + dx;
-        panY = startViewY + dy;
-        updateImageDisplay();
-    }
-    // Add logic for other modes (e.g., drawing box in 'add' mode)
-}
+// ... (keep handlePreviewMouseMove, handlePreviewMouseUp, handlePreviewMouseLeave) ...
 
-function handlePreviewMouseUp(event) {
-     if (event.button !== 0) return;
-
-    if (isPanning && currentEditMode === 'pan') {
-         isPanning = false;
-         imagePreviewContainer.classList.remove('grabbing');
-    }
-    // Add logic for other modes (e.g., finish drawing box in 'add' mode)
-}
-
-function handlePreviewMouseLeave(event) {
-    // Treat leaving the container like mouse up for panning
-     if (isPanning && currentEditMode === 'pan') {
-         isPanning = false;
-         imagePreviewContainer.classList.remove('grabbing');
+// Click handler specifically for the main preview container (background clicks)
+function handlePreviewClick(event) {
+    // This is now simplified, as selection logic moved to mousedown
+    // We might still need this for finalizing actions in other modes (e.g., Add Box)
+    if (currentEditMode === 'select') {
+        // If the click didn't hit a box (handled in mousedown), it might be a deselect click
+        if (!event.target.classList.contains('editable-bbox') && !event.target.classList.contains('resize-handle')) {
+            // selectBlob(null); // Deselect handled in mousedown now
+        }
     }
     // Add logic for other modes if needed
 }
 
-function handlePreviewClick(event) {
-     if (currentEditMode === 'select') {
-         const target = event.target;
-         if (target.classList.contains('editable-bbox')) {
-             const index = parseInt(target.dataset.blobIndex, 10);
-             if (!isNaN(index) && index >= 0 && index < detectedBlobs.length) {
-                  selectedBlobIndex = (selectedBlobIndex === index) ? null : index; // Toggle selection
-                 console.log("Selected blob index:", selectedBlobIndex);
-                 highlightSelectedBlob();
-             } else {
-                 console.warn("Clicked editable-bbox with invalid index:", target.dataset.blobIndex);
-                 selectedBlobIndex = null;
-                 highlightSelectedBlob();
-             }
-         } else {
-             // Clicked outside any box, deselect
-             selectedBlobIndex = null;
-             highlightSelectedBlob();
-         }
-         event.stopPropagation(); // Prevent triggering other potential listeners on container
-     }
-     // Add logic for other modes (e.g., finalize add box, trigger delete)
+// Helper function to handle blob selection/deselection
+function selectBlob(index) {
+    if (index !== null && (!detectedBlobs || index < 0 || index >= detectedBlobs.length)) {
+        console.warn("Attempted to select invalid blob index:", index);
+        index = null; // Treat as deselection
+    }
+
+    const changed = selectedBlobIndex !== index;
+    if (changed) {
+        selectedBlobIndex = index;
+        console.log("Selected blob index:", selectedBlobIndex);
+        drawEditingOverlays(); // Redraw selection highlight and handles (if applicable)
+        updateEditModeUI(); // Update button states based on selection
+        updateEditingStatus(); // Update text based on selection
+    }
 }
 
+// Mouse Down handler specifically for the editing overlays layer (handles)
+function handleEditingOverlayMouseDown(event) {
+    if (event.button !== 0) return; // Only left clicks
+
+    const target = event.target;
+
+    if (currentEditMode === 'edit-bounds' && target.classList.contains('resize-handle')) {
+        event.stopPropagation(); // Prevent preview container pan/select handlers
+        console.log("Clicked resize handle:", target.dataset.handleType);
+        // TODO: Implement drag start logic here
+        // isDraggingHandle = true;
+        // currentDragHandleType = target.dataset.handleType;
+        // dragStartX = event.clientX;
+        // dragStartY = event.clientY;
+        // // Store initial blob bounds for relative calculation
+        // initialDragBounds = { ...detectedBlobs[selectedBlobIndex].bounds };
+    }
+}
 
 // --- Zoom and Pan Implementation ---
 
@@ -715,22 +775,48 @@ function handleWheelZoom(event) {
 
 // Resets zoom to fit image and centers it
 function resetZoomPan() {
-    // ... (resetZoomPan logic remains the same) ...
+    if (!originalImageInfo || !imagePreviewContainer) {
+        currentZoom = 1;
+        panX = 0;
+        panY = 0;
+    } else {
+        const containerWidth = imagePreviewContainer.clientWidth;
+        const containerHeight = imagePreviewContainer.clientHeight;
+        const imageWidth = originalImageInfo.naturalWidth;
+        const imageHeight = originalImageInfo.naturalHeight;
+
+        const scaleX = containerWidth / imageWidth;
+        const scaleY = containerHeight / imageHeight;
+        currentZoom = Math.min(scaleX, scaleY) * 0.95; // Fit with a small margin
+
+        // Center the image
+        panX = (containerWidth - imageWidth * currentZoom) / 2;
+        panY = (containerHeight - imageHeight * currentZoom) / 2;
+    }
     console.log(`Reset Zoom: ${currentZoom.toFixed(2)}, Pan: (${panX.toFixed(1)}, ${panY.toFixed(1)})`);
     updateImageDisplay(); // Apply the reset transform
 }
 
-// Applies the current zoom/pan state to the canvas and overlay container
+// Applies the current zoom/pan state to the canvas and overlay containers
 function updateImageDisplay() {
-    if (!imagePreviewCanvas || !debugOverlaysContainer || !originalImageInfo) return;
+    if (!imagePreviewCanvas || !debugOverlaysContainer || !editingOverlaysContainer || !originalImageInfo) return;
 
     const transform = `translate(${panX}px, ${panY}px) scale(${currentZoom})`;
     imagePreviewCanvas.style.transform = transform;
     debugOverlaysContainer.style.transform = transform;
+    editingOverlaysContainer.style.transform = transform; // Apply to editing overlays too
 
-     // Ensure overlay container has the base dimensions of the image
-     debugOverlaysContainer.style.width = `${originalImageInfo.naturalWidth}px`;
-     debugOverlaysContainer.style.height = `${originalImageInfo.naturalHeight}px`;
+    // Ensure overlay containers have the base dimensions of the image
+    const widthPx = `${originalImageInfo.naturalWidth}px`;
+    const heightPx = `${originalImageInfo.naturalHeight}px`;
+    debugOverlaysContainer.style.width = widthPx;
+    debugOverlaysContainer.style.height = heightPx;
+    editingOverlaysContainer.style.width = widthPx; // Set size for editing overlays
+    editingOverlaysContainer.style.height = heightPx;
+
+    // Redraw editing overlays as zoom/pan might affect handle positions visually if not redrawn
+    // Optional: only redraw if needed, but safer to redraw for now
+    drawEditingOverlays();
 }
 
 // --- Helper Functions ---
@@ -752,8 +838,8 @@ function disableControls(disabled) {
     // Processing Button
     processButton.disabled = processing || !imageLoaded;
 
-     // Editing Section Buttons (initial state, specific states handled by updateEditModeUI)
-     editModeButtons.forEach(button => button.disabled = processing || !imageLoaded);
+    // Editing Section Buttons (initial state, specific states handled by updateEditModeUI)
+    editModeButtons.forEach(button => button.disabled = processing || !imageLoaded);
 
     // Spritesheet Section
     generateSpritesheetButton.disabled = processing || !imageLoaded;
@@ -761,7 +847,6 @@ function disableControls(disabled) {
     paddingInput.disabled = processing || !imageLoaded;
     alignmentSelect.disabled = processing || !imageLoaded;
     downloadSpritesheetButton.disabled = processing || !imageLoaded || !generatedSpritesheetCanvas;
-
 
     // Zoom Buttons
     zoomInButton.disabled = processing || !imageLoaded;
@@ -778,7 +863,7 @@ function disableControls(disabled) {
 // Clears only processing results, keeps original image and settings
 function clearProcessingResults() {
     console.log("Clearing processing results...");
-    grayscaleImageData = null; // Keep grayscale maybe? No, processing implies redoing all.
+    grayscaleImageData = null;
     thresholdedImageData = null;
     cclResult = null;
     detectedBlobs = [];
@@ -788,44 +873,45 @@ function clearProcessingResults() {
     editingToolsSection.style.display = 'none';
     clearGeneratedSpritesheet();
     clearOverlays(debugOverlaysContainer); // Clear visual overlays
-    // Reset debug checkboxes? Optional, maybe keep user's preference.
-    // debugViewCheckboxes.forEach(cb => cb.checked = false);
-    // debugOverlayCheckboxes.forEach(cb => cb.checked = false);
+    clearEditingOverlays(); // Clear editing visual overlays
 
-     // Re-render the original image if available
-     if (originalImageData) {
-         updateDebugView(); // This should fall back to original if views are unchecked/data missing
-         updateDebugOverlays(); // Should be empty now
-     } else {
-         const ctx = imagePreviewCanvas.getContext('2d');
-         ctx.clearRect(0, 0, imagePreviewCanvas.width, imagePreviewCanvas.height);
-         imagePreviewCanvas.width = 1;
-         imagePreviewCanvas.height = 1;
-     }
+    // Reset debug checkboxes? Optional.
+
+    // Re-render the original image if available
+    if (originalImageData) {
+        updateDebugView();
+        updateDebugOverlays(); // Should be empty now
+        drawEditingOverlays(); // Should be empty now
+    } else {
+        // ... clear canvas ...
+        const ctx = imagePreviewCanvas.getContext('2d');
+        ctx.clearRect(0, 0, imagePreviewCanvas.width, imagePreviewCanvas.height);
+        imagePreviewCanvas.width = 1;
+        imagePreviewCanvas.height = 1;
+    }
 }
 
 // Clears everything including the loaded image and resets UI fully
 function clearStateBeforeLoad() {
-     console.log("Clearing full state.");
-     originalImageInfo = null;
-     originalImageData = null;
-     grayscaleImageData = null; // Clear grayscale too
+    console.log("Clearing full state.");
+    originalImageInfo = null;
+    originalImageData = null;
+    grayscaleImageData = null; // Clear grayscale too
 
-     // Reset settings to default
-     currentThresholdSettings = {
+    // Reset settings to default
+    currentThresholdSettings = {
         type: 'manual',
         manualValue: 128,
         adaptiveBlockSize: 11,
         adaptiveC: 2
     };
-    if (thresholdTypeSelect) thresholdTypeSelect.value = 'manual';
-    // Reset other settings? Sliders have defaults in HTML.
 
     clearProcessingResults(); // Clear results and reset edit mode etc.
 
     updateThresholdSettingsUI();
 
     if (imagePreviewCanvas) {
+        // ... clear canvas ...
         const ctx = imagePreviewCanvas.getContext('2d');
         imagePreviewCanvas.style.transform = '';
         ctx.clearRect(0, 0, imagePreviewCanvas.width, imagePreviewCanvas.height);
@@ -838,30 +924,36 @@ function clearStateBeforeLoad() {
         debugOverlaysContainer.style.width = '0px';
         debugOverlaysContainer.style.height = '0px';
     }
+    if (editingOverlaysContainer) { // Clear editing overlays container too
+        clearEditingOverlays();
+        editingOverlaysContainer.style.transform = '';
+        editingOverlaysContainer.style.width = '0px';
+        editingOverlaysContainer.style.height = '0px';
+    }
 
-     resetZoomPan(); // Reset zoom/pan state
+    resetZoomPan(); // Reset zoom/pan state
 
-     processingStatusDiv.textContent = 'Upload an image to start.';
-     editingStatusDiv.textContent = ''; // Clear editing status
-     disableControls(true); // Disable almost everything
-     imageUploadInput.disabled = false; // Re-enable upload
-     imageUploadInput.value = ''; // Clear file input selection
+    processingStatusDiv.textContent = 'Upload an image to start.';
+    editingStatusDiv.textContent = ''; // Clear editing status
+    disableControls(true); // Disable almost everything
+    imageUploadInput.disabled = false; // Re-enable upload
+    imageUploadInput.value = ''; // Clear file input selection
 }
 
 // Clears the generated spritesheet
 function clearGeneratedSpritesheet() {
-    generatedSpritesheetCanvas = null; 
+    generatedSpritesheetCanvas = null;
     if (spritesheetPreviewCanvas) {
         const ctx = spritesheetPreviewCanvas.getContext('2d');
         spritesheetPreviewCanvas.width = 1;
         spritesheetPreviewCanvas.height = 1;
         ctx.clearRect(0, 0, 1, 1);
     }
-    downloadSpritesheetButton.disabled = true; 
-     console.log("Spritesheet cleared.");
+    downloadSpritesheetButton.disabled = true;
+    console.log("Spritesheet cleared.");
 }
 
-// Utility to pause execution slightly to allow UI updates 
+// Utility to pause execution slightly to allow UI updates
 function wait(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
