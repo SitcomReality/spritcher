@@ -1,9 +1,9 @@
 // --- DOM Element References ---
 export const elements = {
-    appContainer: null, // Added for main container styling access
-    themeToggleButton: null, // Added
+    appContainer: null, 
+    themeToggleButton: null, 
     imageUploadInput: null,
-    imageUploadLabel: null, // Added potentially
+    imageUploadLabel: null, 
     imagePreviewCanvas: null,
     imagePreviewContainer: null,
     debugOverlaysContainer: null,
@@ -11,13 +11,13 @@ export const elements = {
     manualThresholdSettingsDiv: null,
     adaptiveThresholdSettingsDiv: null,
     thresholdSlider: null,
-    thresholdNumberInput: null, // Added
+    thresholdNumberInput: null, 
     adaptiveBlocksizeInput: null,
     adaptiveCInput: null,
     minSizeSlider: null,
-    minSizeNumberInput: null, // Added
-    debugViewCheckboxes: null, // Collection
-    debugOverlayCheckboxes: null, // Collection
+    minSizeNumberInput: null, 
+    debugViewCheckboxes: null, 
+    debugOverlayCheckboxes: null, 
     showGrayscaleCheckbox: null,
     showThresholdCheckbox: null,
     showCCLCheckbox: null,
@@ -26,11 +26,11 @@ export const elements = {
     processingStatusDiv: null,
     gridColsInput: null,
     paddingInput: null,
-    cellWidthInput: null, // Added
-    cellHeightInput: null, // Added
-    useRecommendedSizeButton: null, // Added
-    alignHSelect: null, // Added
-    alignVSelect: null, // Added
+    cellWidthInput: null, 
+    cellHeightInput: null, 
+    useRecommendedSizeButton: null, 
+    alignHSelect: null, 
+    alignVSelect: null, 
     generateSpritesheetButton: null,
     spritesheetPreviewCanvas: null,
     spritesheetPreviewContainer: null,
@@ -39,19 +39,17 @@ export const elements = {
     zoomOutButton: null,
     editingToolsSection: null,
     editToolbar: null,
-    editModeButtons: null, // Collection
+    editModeButtons: null, 
     deleteSelectedButton: null,
     editingStatusDiv: null,
     extractedSpritesSection: null,
-    // Extracted Sprites Section NEW/Renamed
     availableSpritesDisplayContainer: null,
     availableSpritesCountSpan: null,
     addAllAvailableButton: null,
     selectedSpritesDisplayContainer: null,
     selectedSpritesCountSpan: null,
     removeAllSelectedButton: null,
-    selectedSpritesStatsDiv: null, // Added
-    // Help Modal Elements (Added)
+    selectedSpritesStatsDiv: null, 
     helpButton: null,
     helpDialog: null,
     helpCloseButton: null,
@@ -84,9 +82,9 @@ export function populateElements() {
     elements.processingStatusDiv = document.getElementById('processing-status');
     elements.gridColsInput = document.getElementById('grid-cols-input');
     elements.paddingInput = document.getElementById('padding-input');
-    elements.cellWidthInput = document.getElementById('cell-width-input'); // Added
-    elements.cellHeightInput = document.getElementById('cell-height-input'); // Added
-    elements.useRecommendedSizeButton = document.getElementById('use-recommended-size-btn'); // Added
+    elements.cellWidthInput = document.getElementById('cell-width-input'); 
+    elements.cellHeightInput = document.getElementById('cell-height-input'); 
+    elements.useRecommendedSizeButton = document.getElementById('use-recommended-size-btn'); 
     elements.alignHSelect = document.getElementById('align-h-select');
     elements.alignVSelect = document.getElementById('align-v-select');
     elements.generateSpritesheetButton = document.getElementById('generate-spritesheet-button');
@@ -102,7 +100,6 @@ export function populateElements() {
     elements.editingStatusDiv = document.getElementById('editing-status');
     elements.extractedSpritesSection = document.getElementById('extracted-sprites-section');
 
-    // Extracted Sprites Section NEW/Renamed
     elements.availableSpritesDisplayContainer = document.getElementById('available-sprites-display');
     elements.availableSpritesCountSpan = document.getElementById('available-sprites-count');
     elements.addAllAvailableButton = document.getElementById('add-all-available-btn');
@@ -111,25 +108,20 @@ export function populateElements() {
     elements.removeAllSelectedButton = document.getElementById('remove-all-selected-btn');
     elements.selectedSpritesStatsDiv = document.getElementById('selected-sprites-stats');
 
-    // Help Modal Elements (Added)
     elements.helpButton = document.getElementById('help-button');
     elements.helpDialog = document.getElementById('help-dialog');
     elements.helpCloseButton = document.getElementById('help-close-button');
 
-    // Validation
     for (const key in elements) {
         const isCollection = key.endsWith('Buttons') || key.endsWith('Checkboxes');
-        // Adjusted check to allow null collections (querySelectorAll might return empty)
         if (elements[key] === null && !isCollection && !key.includes('Button') && !key.includes('Input') && !key.includes('Select') && !key.endsWith('Div')) {
-            // Only warn for critical elements that are definitely expected
             if (document.getElementById(key.replace(/([A-Z])/g, '-$1').toLowerCase()) || document.querySelector(`#${key.replace(/([A-Z])/g, '-$1').toLowerCase()}`)) {
                 console.warn(`DOM element reference is null for key: ${key}. Element might exist but ID/Selector mismatch?`);
             } else {
-                // Don't warn if the element truly isn't found (might be conditional UI)
             }
         } else if (isCollection && !(elements[key] instanceof NodeList)) {
             console.warn(`Expected NodeList but got different type for key: ${key}`, elements[key]);
         }
     }
-    console.log("DOM elements populated (with cell size inputs).");
+    console.log("DOM elements populated (with help modal elements).");
 }

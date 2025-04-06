@@ -1,8 +1,6 @@
-            "debug-controller": "./debug-controller.js",
-            "theme-controller": "./theme-controller.js",
-            "extracted-sprites-controller": "./extracted-sprites-controller.js",
-            "help-controller": "./help-controller.js"
-        }
-    }
-    </script>
+import { initUI } from 'ui-controller';
 
+// Initialize the main UI controller which will initialize other controllers
+initUI();
+
+console.log("Spritcher application main script loaded.");

@@ -2,7 +2,7 @@
 .help-btn {
     position: absolute;
     top: 15px;
-    right: 75px; 
+    right: 75px; /* Position next to theme toggle */
     width: 30px;
     height: 30px;
     border-radius: 50%;
@@ -28,19 +28,19 @@
 
 /* Help Modal Dialog Styles */
 .help-modal {
-    position: fixed; 
-    margin: auto; 
+    position: fixed; /* Using fixed allows margin:auto to center */
+    margin: auto; /* Center the dialog */
     max-width: 90vw;
     max-height: 85vh;
-    width: 800px; 
+    width: 800px; /* Default width, adjusts with max-width */
     border: 1px solid var(--border-primary);
     border-radius: 8px;
     padding: 25px 30px;
     background-color: var(--bg-primary);
     color: var(--text-primary);
     box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
-    overflow-y: auto; 
-    z-index: 1000;
+    overflow-y: auto; /* Enable vertical scrolling if content overflows */
+    z-index: 1000; /* Ensure it's above other content */
     transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
 }
 
@@ -81,8 +81,9 @@
 .help-content section {
     margin-bottom: 25px;
     padding-left: 10px;
-    border-left: 3px solid var(--border-secondary);
+    border-left: 3px solid var(--border-secondary); /* Decorative left border */
 }
+/* Adjust border color in dark mode */
 .dark-mode .help-content section {
      border-left: 3px solid var(--border-interactive);
 }
@@ -103,13 +104,14 @@
 }
 
 .help-content ul {
-    padding-left: 25px;
+    padding-left: 25px; /* Indent bullet points */
 }
 
 .help-content li {
     margin-bottom: 5px;
 }
 
+/* Style for inline code examples */
 .help-content code {
     background-color: var(--bg-secondary);
     padding: 0.2em 0.4em;
@@ -117,8 +119,9 @@
     font-size: 0.9em;
     color: var(--text-link);
 }
+/* Adjust code color in dark mode */
 .dark-mode .help-content code {
-    color: #93c5fd; 
+    color: #93c5fd; /* Light blue */
 }
 
 .help-content strong {

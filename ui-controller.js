@@ -25,7 +25,7 @@ export function initUI() {
     initEditingController();
     initDebugController();
     initExtractedSpritesController();
-    initHelpController();
+    initHelpController(); // Initialize help controller
 
     // Add event listeners managed directly by ui-controller (e.g., image upload)
     elements.imageUploadInput.addEventListener('change', handleImageUpload);

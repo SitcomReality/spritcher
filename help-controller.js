@@ -11,12 +11,15 @@ export function initHelpController() {
 
     // Optional: Close modal if clicked outside (on the backdrop)
     elements.helpDialog.addEventListener('click', (event) => {
+        // Check if the click target is the dialog itself (the backdrop)
         if (event.target === elements.helpDialog) {
             closeHelpModal();
         }
     });
 
-    // Optional: Close modal with Escape key
+    // Optional: Close modal with Escape key (native dialog behavior, but can be explicit)
+    // Note: The <dialog> element often handles 'Escape' natively.
+    // This listener can be added for robustness or if native behavior is suppressed.
     elements.helpDialog.addEventListener('keydown', (event) => {
         if (event.key === 'Escape') {
             closeHelpModal();
@@ -43,4 +46,3 @@ function closeHelpModal() {
         console.log("Help modal closed.");
     }
 }
-
