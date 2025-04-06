@@ -174,7 +174,3 @@ export function deleteBlobByIndex(index) {
 
     return true;
 }
-
-export function setGrayscaleImage(imgData) {
-    appState.grayscaleImageData = imgData;
-}
