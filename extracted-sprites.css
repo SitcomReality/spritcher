@@ -1,0 +1,89 @@
+/* Extracted Sprites Section Styles */
+
+#extracted-sprites-section {
+    /* Display handled by JS */
+}
+
+.extracted-sprites-toolbar {
+    margin-bottom: 15px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    padding: 10px;
+    background-color: var(--bg-secondary);
+    border-radius: 4px;
+    transition: background-color 0.3s ease;
+}
+
+#extracted-sprites-count {
+    font-size: 0.9em;
+    color: var(--text-muted);
+    margin-left: auto; /* Push count to the right */
+}
+
+.extracted-sprites-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 15px;
+    border: 1px dashed var(--border-secondary);
+    border-radius: 4px;
+    min-height: 100px;
+    max-height: 400px; /* Limit height and allow scrolling */
+    overflow-y: auto;
+    background-color: var(--bg-interactive); /* Slightly different background */
+    transition: background-color 0.3s ease, border-color 0.3s ease;
+}
+
+.sprite-preview-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 8px;
+    border: 2px solid transparent; /* Border for selection indication */
+    border-radius: 4px;
+    background-color: var(--bg-primary);
+    box-shadow: var(--shadow-primary);
+    cursor: pointer;
+    transition: border-color 0.2s ease, background-color 0.2s ease, transform 0.1s ease;
+    position: relative; /* For potential future absolute elements like index number */
+}
+.sprite-preview-item:hover {
+    border-color: var(--border-interactive);
+    background-color: var(--bg-secondary);
+}
+
+.sprite-preview-item.selected {
+    border-color: var(--text-link);
+    background-color: var(--bg-secondary); /* Keep hover effect */
+}
+.dark-mode .sprite-preview-item.selected {
+    border-color: var(--text-link);
+    background-color: var(--bg-tertiary);
+}
+
+.sprite-preview-item canvas {
+    display: block;
+    max-width: 80px; /* Limit preview size */
+    max-height: 80px;
+    background-color: transparent; /* Canvas itself is transparent */
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+    border: 1px solid var(--border-secondary); /* Light border around the actual sprite */
+    margin-bottom: 5px;
+}
+
+.sprite-preview-item .sprite-index-label {
+    font-size: 0.75em;
+    color: var(--text-muted);
+    margin-top: auto; /* Push to bottom if needed */
+}
+
+/* Style for the initial placeholder message */
+#extracted-sprites-display p {
+    width: 100%;
+    text-align: center;
+    color: var(--text-muted);
+    padding: 20px;
+}

@@ -1,9 +1,9 @@
 import { elements } from 'dom-elements';
 import { appState, updateBlobBoundsByIndex } from 'state';
 import { clearGeneratedSpritesheet } from 'spritesheet-controller';
-import { invalidateProcessing } from 'processing-controller';
 import { updateDebugOverlays } from 'debug-controller';
 import { updateEditModeUI } from 'mode-controller';
+import { displayExtractedSprites } from 'extracted-sprites-controller';
 
 // --- Local State for Resizing ---
 let isResizing = false;
@@ -139,11 +139,11 @@ export function stopResizing(saveChanges) {
             if (newBounds.minX !== startBounds_resize.minX || newBounds.minY !== startBounds_resize.minY ||
                 newBounds.width !== startBounds_resize.width || newBounds.height !== startBounds_resize.height)
             {
-                const updated = updateBlobBoundsByIndex(selectedIndex, newBounds);
+                const updated = updateBlobBoundsByIndex(selectedIndex, newBounds); // Updates detectedBlobs and extractedSprites
 
                 if (updated) {
                     clearGeneratedSpritesheet(); // Invalidate generated sheet
-                    invalidateProcessing(true); // Keep threshold, re-run CCL (though not strictly needed just for bounds change, safer for now)
+                    displayExtractedSprites(); // Update previews as bounds changed
                     elements.processingStatusDiv.textContent = `Sprite ${selectedIndex} resized. Regeneration needed.`;
                     console.log(`Resize end: Saved new bounds for blob ${selectedIndex}`, newBounds);
                 } else {

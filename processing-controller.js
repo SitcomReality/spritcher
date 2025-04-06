@@ -6,6 +6,7 @@ import { clearGeneratedSpritesheet } from 'spritesheet-controller';
 import { clearOverlays, updateDebugView, updateDebugOverlays } from 'debug-controller';
 import { updateEditModeUI, setEditModeAndClearSelection } from 'mode-controller';
 import { disableAllControls } from 'ui-controller'; // Assuming disable logic stays in main UI controller
+import { displayExtractedSprites, clearExtractedSpritesDisplay } from 'extracted-sprites-controller'; // Import new controller
 
 // Utility to pause execution slightly to allow UI updates
 function wait(ms) {
@@ -88,7 +89,7 @@ export async function handleProcessImage() {
             throw new Error("Thresholding step failed, cannot perform CCL.");
         }
         const result = findBlobs(appState.thresholdedImageData, minSize);
-        setCCLResult(result); // This also copies blobs and resets selection
+        setCCLResult(result); // This also copies blobs, resets selection, AND populates extractedSprites + selectedSpritesForSheet
     } catch (error) {
         console.error("Error during blob detection:", error);
         elements.processingStatusDiv.textContent = `Error during blob detection: ${error.message}`;
@@ -99,7 +100,11 @@ export async function handleProcessImage() {
     const endTime = performance.now();
     console.log(`CCL completed in ${((endTime - startTime) / 1000).toFixed(2)} seconds.`);
 
-    elements.processingStatusDiv.textContent = `Processing complete. Found ${appState.detectedBlobs.length} sprites. Ready to generate spritesheet or edit sprites.`;
+    // --- Display Extracted Sprites ---
+    displayExtractedSprites(); // Populate the new section
+    elements.extractedSpritesSection.style.display = appState.extractedSprites.length > 0 ? 'block' : 'none';
+
+    elements.processingStatusDiv.textContent = `Processing complete. Found ${appState.detectedBlobs.length} sprites. Ready for selection/editing.`;
     disableAllControls(false);
     clearGeneratedSpritesheet();
 
@@ -119,9 +124,10 @@ export async function handleProcessImage() {
  * @param {boolean} [keepThresholded=false] - If true, only invalidate CCL/Blobs (e.g., minSize changed).
  */
 export function invalidateProcessing(keepThresholded = false) {
-    clearCCLResult(); // Always clear CCL and derived blobs/selection
+    clearCCLResult(); // Always clear CCL and derived blobs/selection/extracted
     clearGeneratedSpritesheet(); // Clear spritesheet result
     clearOverlays(elements.debugOverlaysContainer); // Clear visual overlays
+    clearExtractedSpritesDisplay(); // Clear the extracted sprites UI
 
     if (!keepThresholded) {
         appState.thresholdedImageData = null; // Clear threshold result as well
@@ -134,6 +140,7 @@ export function invalidateProcessing(keepThresholded = false) {
     // Update relevant UI states
     updateEditModeUI();
     elements.editingToolsSection.style.display = 'none';
+    elements.extractedSpritesSection.style.display = 'none'; // Hide extracted sprites section
     // Disable download button if spritesheet was cleared
     if(elements.downloadSpritesheetButton) elements.downloadSpritesheetButton.disabled = true;
 
@@ -142,8 +149,10 @@ export function invalidateProcessing(keepThresholded = false) {
 
 export function clearProcessingOnLoad() {
     clearProcessingResultsState();
+    clearExtractedSpritesDisplay(); // Clear extracted sprites UI
     updateDebugView(); // Re-render the original image if available, else clear canvas
     updateDebugOverlays(); // Should be empty now
     updateEditModeUI();
     elements.editingToolsSection.style.display = 'none';
+    elements.extractedSpritesSection.style.display = 'none'; // Hide extracted sprites section
 }

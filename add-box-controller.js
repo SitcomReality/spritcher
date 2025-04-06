@@ -1,9 +1,9 @@
 import { elements } from 'dom-elements';
 import { appState, addBlob, setSelectedBlobIndex } from 'state';
 import { clearGeneratedSpritesheet } from 'spritesheet-controller';
-import { invalidateProcessing } from 'processing-controller';
 import { updateDebugOverlays } from 'debug-controller';
 import { setEditModeAndClearSelection, updateEditModeUI } from 'mode-controller';
+import { displayExtractedSprites } from 'extracted-sprites-controller';
 
 // --- Local State for Adding Box ---
 let isAddingBox = false;
@@ -109,20 +109,26 @@ export function stopAddingBox(saveChanges) {
                     width: finalWidth,
                     height: finalHeight
                 };
-                addBlob(newBounds); // Add the new blob to the state
+                const newDetectedIndex = addBlob(newBounds); // Add the new blob to the state (handles detected, extracted, selected)
 
-                console.log("Added new blob:", newBounds);
-                clearGeneratedSpritesheet(); // Invalidate generated sheet
-                invalidateProcessing(true); // Keep threshold, re-run CCL (for consistency, though not strictly necessary)
-                elements.processingStatusDiv.textContent = `New sprite added. Regeneration needed.`;
+                if (newDetectedIndex !== null) {
+                    console.log("Added new blob:", newBounds);
+                    clearGeneratedSpritesheet(); // Invalidate generated sheet
 
-                updateDebugOverlays(); // Redraw overlays to include the new box
-                updateEditModeUI(); // Update button states
+                    elements.processingStatusDiv.textContent = `New sprite added (${appState.detectedBlobs.length} total). Regeneration needed.`;
 
-                // Optionally select the newly added blob and switch to select mode
-                const newIndex = appState.detectedBlobs.length - 1;
-                setSelectedBlobIndex(newIndex);
-                setEditModeAndClearSelection('select'); // Switch mode after adding
+                    updateDebugOverlays(); // Redraw overlays to include the new box
+                    displayExtractedSprites(); // Update the extracted sprites view
+                    updateEditModeUI(); // Update button states
+
+                    // Optionally select the newly added blob (in editing view) and switch to select mode
+                    setSelectedBlobIndex(newDetectedIndex); // Select in editing view
+                    setEditModeAndClearSelection('select'); // Switch mode after adding
+
+                } else {
+                     console.error("Failed to add blob to state.");
+                }
+
 
             } else {
                 console.log("Add box cancelled: Final box too small or invalid.");

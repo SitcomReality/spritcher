@@ -9,6 +9,7 @@ import { initEditingController, resetEditingOnLoad } from 'editing-controller';
 import { updateEditModeUI } from 'mode-controller';
 import { initDebugController, updateDebugView, updateDebugOverlays, clearOverlays } from 'debug-controller';
 import { initThemeController } from 'theme-controller';
+import { initExtractedSpritesController, clearExtractedSpritesDisplay } from 'extracted-sprites-controller';
 
 // --- Initialization ---
 export function initUI() {
@@ -20,8 +21,9 @@ export function initUI() {
     initProcessingController();
     initSpritesheetController();
     initViewportController();
-    initEditingController(); 
+    initEditingController();
     initDebugController();
+    initExtractedSpritesController();
 
     // Add event listeners managed directly by ui-controller (e.g., image upload)
     elements.imageUploadInput.addEventListener('change', handleImageUpload);
@@ -69,6 +71,7 @@ async function handleImageUpload(event) {
         updateMinSizeUI(); 
         disableAllControls(false); 
         elements.editingToolsSection.style.display = 'none'; 
+        elements.extractedSpritesSection.style.display = 'none'; // Hide initially
         clearGeneratedSpritesheet(); 
 
         console.log("Image loaded successfully.");
@@ -88,6 +91,8 @@ async function handleImageUpload(event) {
 // Disables/enables controls based on current app state
 export function disableAllControls(disabled) {
     const imageLoaded = !!appState.originalImageInfo;
+    const spritesExtracted = appState.extractedSprites.length > 0;
+    const spritesSelected = appState.selectedSpritesForSheet.length > 0;
     const processing = disabled; 
 
     // Settings Section (individual disable logic handled in settings-controller)
@@ -108,11 +113,16 @@ export function disableAllControls(disabled) {
     // We just need to call it to ensure consistency
     updateEditModeUI();
 
+    // Extracted Sprites Section
+    elements.selectAllSpritesButton.disabled = processing || !spritesExtracted;
+    elements.deselectAllSpritesButton.disabled = processing || !spritesExtracted;
+    // Container items are handled by the controller
+
     // Spritesheet Section
-    elements.generateSpritesheetButton.disabled = processing || !imageLoaded || !appState.detectedBlobs || appState.detectedBlobs.length === 0;
-    elements.gridColsInput.disabled = processing || !imageLoaded || !appState.detectedBlobs || appState.detectedBlobs.length === 0;
-    elements.paddingInput.disabled = processing || !imageLoaded || !appState.detectedBlobs || appState.detectedBlobs.length === 0;
-    elements.alignmentSelect.disabled = processing || !imageLoaded || !appState.detectedBlobs || appState.detectedBlobs.length === 0;
+    elements.generateSpritesheetButton.disabled = processing || !imageLoaded || !spritesSelected; // Depends on selection now
+    elements.gridColsInput.disabled = processing || !imageLoaded || !spritesSelected;
+    elements.paddingInput.disabled = processing || !imageLoaded || !spritesSelected;
+    elements.alignmentSelect.disabled = processing || !imageLoaded || !spritesSelected;
     // Download button state
     elements.downloadSpritesheetButton.disabled = processing || !imageLoaded || !appState.generatedSpritesheetCanvas;
 
@@ -142,6 +152,7 @@ function clearStateBeforeLoad() {
     }
     clearTransforms();
     clearOverlays(elements.debugOverlaysContainer);
+    clearExtractedSpritesDisplay(); // Clear extracted sprites UI
 
     // Reset settings UI to defaults
     resetThresholdSettings();
@@ -151,7 +162,7 @@ function clearStateBeforeLoad() {
     updateMinSizeUI();
 
     // Reset other UI areas
-    clearProcessingOnLoad();
+    clearProcessingOnLoad(); // Already hides sections
     resetEditingOnLoad(); 
     clearGeneratedSpritesheet();
 
@@ -161,6 +172,11 @@ function clearStateBeforeLoad() {
     // Reset Debug Checkboxes
     elements.debugViewCheckboxes.forEach(cb => cb.checked = false);
     elements.debugOverlayCheckboxes.forEach(cb => cb.checked = false);
+
+    // Hide sections that depend on processing results
+    elements.editingToolsSection.style.display = 'none';
+    elements.extractedSpritesSection.style.display = 'none';
+
 
     // Disable controls initially, except upload
     disableAllControls(true);

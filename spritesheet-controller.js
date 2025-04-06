@@ -13,14 +13,19 @@ export function initSpritesheetController() {
 
 // Handles changes to spritesheet layout settings
 function handleSpritesheetSettingsChange() {
-    clearGeneratedSpritesheet();
-    elements.processingStatusDiv.textContent = "Spritesheet settings changed. Click 'Generate Spritesheet' to update.";
+    clearGeneratedSpritesheet(); // Clear only the generated sheet, not selection
+    elements.processingStatusDiv.textContent = "Spritesheet layout settings changed. Click 'Generate Spritesheet' to update.";
+    // Re-enable generate button if sprites are selected
+     elements.generateSpritesheetButton.disabled = appState.selectedSpritesForSheet.length === 0;
 }
 
-// Generates and displays the spritesheet
+// Generates and displays the spritesheet using selected sprites
 async function handleGenerateSpritesheet() {
-    if (!appState.detectedBlobs || appState.detectedBlobs.length === 0) {
-        alert("No sprites detected. Click 'Detect Sprites' first.");
+    // Use selectedSpritesForSheet to determine which sprites to include and their order
+    const selectedIndices = appState.selectedSpritesForSheet;
+
+    if (selectedIndices.length === 0) {
+        alert("No sprites selected for the spritesheet. Please select sprites in Step 5.");
         return;
     }
     if (!appState.originalImageData) {
@@ -28,9 +33,25 @@ async function handleGenerateSpritesheet() {
         return;
     }
 
-    console.log("Generating spritesheet...");
+    console.log(`Generating spritesheet with ${selectedIndices.length} selected sprites...`);
     elements.processingStatusDiv.textContent = 'Generating spritesheet...';
     disableAllControls(true);
+
+    // Get the actual blob objects based on the selected indices and their order
+    const blobsToInclude = selectedIndices.map(index => {
+        // Ensure the index is valid (should be, but check anyway)
+        if (index >= 0 && index < appState.extractedSprites.length) {
+             return appState.extractedSprites[index].blob;
+        }
+        console.warn(`Invalid index ${index} found in selectedSpritesForSheet. Skipping.`);
+        return null;
+    }).filter(blob => blob !== null); // Filter out any nulls from invalid indices
+
+     if (blobsToInclude.length === 0) {
+        alert("Error: Could not find valid blob data for selected sprites.");
+        disableAllControls(false);
+        return;
+    }
 
     const cols = parseInt(elements.gridColsInput.value, 10) || 8;
     const padding = parseInt(elements.paddingInput.value, 10) || 0;
@@ -39,7 +60,7 @@ async function handleGenerateSpritesheet() {
     try {
         const resultCanvas = await generateSpritesheet(
             appState.originalImageData,
-            appState.detectedBlobs,
+            blobsToInclude, // Pass the filtered and ordered list of blobs
             cols,
             padding,
             alignment
@@ -54,7 +75,7 @@ async function handleGenerateSpritesheet() {
         previewCtx.clearRect(0, 0, resultCanvas.width, resultCanvas.height);
         previewCtx.drawImage(resultCanvas, 0, 0);
 
-        elements.processingStatusDiv.textContent = `Spritesheet generated (${appState.detectedBlobs.length} sprites). Ready to download.`;
+        elements.processingStatusDiv.textContent = `Spritesheet generated (${blobsToInclude.length} sprites). Ready to download.`;
         elements.downloadSpritesheetButton.disabled = false;
         console.log("Spritesheet generation and preview complete.");
 
@@ -80,7 +101,17 @@ function handleDownloadSpritesheet() {
         const originalName = elements.imageUploadInput.files[0].name;
         const baseName = originalName.substring(0, originalName.lastIndexOf('.')) || originalName;
         filename = `${baseName}_spritesheet.png`;
+    } else if (appState.originalImageInfo && appState.originalImageInfo.img.src) {
+        // Fallback if file input is cleared but image loaded (e.g. from URL later?)
+         try {
+            const url = new URL(appState.originalImageInfo.img.src);
+            const pathnameParts = url.pathname.split('/');
+            const originalName = pathnameParts[pathnameParts.length - 1];
+             const baseName = originalName.substring(0, originalName.lastIndexOf('.')) || originalName;
+             filename = `${baseName}_spritesheet.png`;
+         } catch (e) {/* Ignore error if src is not a valid URL (e.g., data URL) */}
     }
+
 
     downloadCanvasAsPNG(appState.generatedSpritesheetCanvas, filename);
 }
@@ -90,9 +121,15 @@ export function clearGeneratedSpritesheet() {
     clearGeneratedSpritesheetState(); // Clear state
     if (elements.spritesheetPreviewCanvas) {
         const ctx = elements.spritesheetPreviewCanvas.getContext('2d');
+        // Ensure width/height are > 0 to avoid errors
+        const w = elements.spritesheetPreviewCanvas.width || 1;
+        const h = elements.spritesheetPreviewCanvas.height || 1;
+        elements.spritesheetPreviewCanvas.width = w;
+        elements.spritesheetPreviewCanvas.height = h;
+        ctx.clearRect(0, 0, w, h);
+        // Reset to small size to visually clear it if needed
         elements.spritesheetPreviewCanvas.width = 1;
         elements.spritesheetPreviewCanvas.height = 1;
-        ctx.clearRect(0, 0, 1, 1);
     }
     if(elements.downloadSpritesheetButton) elements.downloadSpritesheetButton.disabled = true;
     console.log("Spritesheet cleared.");

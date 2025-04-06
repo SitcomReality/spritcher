@@ -14,6 +14,7 @@
     <link rel="stylesheet" href="preview.css">
     <link rel="stylesheet" href="editing.css">
     <link rel="stylesheet" href="spritesheet.css">
+    <link rel="stylesheet" href="extracted-sprites.css"> <!-- Added -->
 </head>
 <body>
     <button id="theme-toggle-button" class="theme-toggle" title="Toggle Light/Dark Mode">
@@ -99,7 +100,7 @@
         </section>
 
         <section id="editing-tools-section" style="display: none;">
-            <h2>Sprite Editing Tools</h2>
+            <h2>4. Sprite Editing Tools</h2> 
             <div id="edit-toolbar">
                 <button id="pan-mode-btn" class="edit-mode-btn active" data-mode="pan" title="Pan/Zoom Mode (Click+Drag to Pan, Wheel to Zoom)">Pan/Zoom</button>
                 <button id="select-mode-btn" class="edit-mode-btn" data-mode="select" title="Select Sprites (Click on a blue box)">Select</button>
@@ -110,8 +111,22 @@
             <div id="editing-status">Mode: PAN. Click and drag to pan, use wheel or buttons to zoom.</div>
         </section>
 
+        <section id="extracted-sprites-section" style="display: none;">
+            <h2>5. Select & Order Sprites for Sheet</h2> 
+            <div class="extracted-sprites-toolbar">
+                <button id="select-all-sprites-btn" title="Select all extracted sprites">Select All</button>
+                <button id="deselect-all-sprites-btn" title="Deselect all extracted sprites">Deselect All</button>
+                <span id="extracted-sprites-count">0 sprites detected.</span>
+            </div>
+            <div id="extracted-sprites-display" class="extracted-sprites-container">
+                <!-- Sprite previews will be generated here by JS -->
+                <p>Click 'Detect Sprites' to see individual sprites here.</p>
+            </div>
+            <div class="setting-hint">(Click on sprites below to toggle selection for the final spritesheet. Drag and drop to reorder - *coming soon*).</div>
+        </section>
+
         <section id="spritesheet-section">
-            <h2>4. Generate & Download Spritesheet</h2>
+            <h2>6. Generate & Download Spritesheet</h2> 
             <fieldset>
                 <legend>Spritesheet Layout</legend>
                 <div class="setting">
@@ -163,7 +178,8 @@
             "add-box-controller": "./add-box-controller.js",
             "delete-controller": "./delete-controller.js",
             "debug-controller": "./debug-controller.js",
-            "theme-controller": "./theme-controller.js"
+            "theme-controller": "./theme-controller.js",
+            "extracted-sprites-controller": "./extracted-sprites-controller.js"
         }
     }
     </script>

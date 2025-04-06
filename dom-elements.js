@@ -11,12 +11,10 @@ export const elements = {
     manualThresholdSettingsDiv: null,
     adaptiveThresholdSettingsDiv: null,
     thresholdSlider: null,
-    // thresholdValueSpan: null, // Removed, replaced by number input
     thresholdNumberInput: null, // Added
     adaptiveBlocksizeInput: null,
     adaptiveCInput: null,
     minSizeSlider: null,
-    // minSizeValueSpan: null, // Removed, replaced by number input
     minSizeNumberInput: null, // Added
     debugViewCheckboxes: null, // Collection
     debugOverlayCheckboxes: null, // Collection
@@ -39,7 +37,13 @@ export const elements = {
     editToolbar: null,
     editModeButtons: null, // Collection
     deleteSelectedButton: null,
-    editingStatusDiv: null
+    editingStatusDiv: null,
+    extractedSpritesSection: null,
+    extractedSpritesToolbar: null,
+    selectAllSpritesButton: null,
+    deselectAllSpritesButton: null,
+    extractedSpritesCountSpan: null,
+    extractedSpritesDisplayContainer: null
 };
 
 export function populateElements() {
@@ -81,16 +85,20 @@ export function populateElements() {
     elements.editModeButtons = document.querySelectorAll('.edit-mode-btn');
     elements.deleteSelectedButton = document.getElementById('delete-selected-btn');
     elements.editingStatusDiv = document.getElementById('editing-status');
+    elements.extractedSpritesSection = document.getElementById('extracted-sprites-section');
+    elements.extractedSpritesToolbar = document.querySelector('.extracted-sprites-toolbar');
+    elements.selectAllSpritesButton = document.getElementById('select-all-sprites-btn');
+    elements.deselectAllSpritesButton = document.getElementById('deselect-all-sprites-btn');
+    elements.extractedSpritesCountSpan = document.getElementById('extracted-sprites-count');
+    elements.extractedSpritesDisplayContainer = document.getElementById('extracted-sprites-display');
 
     // Validation
     for (const key in elements) {
-        // Skip validation for collections that might be empty initially
         const isCollection = key.endsWith('Buttons') || key.endsWith('Checkboxes');
         if (elements[key] === null && !isCollection) {
             console.warn(`DOM element not found for key: ${key}`);
         } else if (isCollection && !(elements[key] instanceof NodeList)) {
-             // Catch if a collection variable didn't get a NodeList (but allow empty NodeList)
-            console.warn(`Expected NodeList but got different type for key: ${key}`);
+             console.warn(`Expected NodeList but got different type for key: ${key}`);
         }
     }
     console.log("DOM elements populated.");
