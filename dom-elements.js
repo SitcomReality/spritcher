@@ -33,6 +33,7 @@ export const elements = {
     editingToolsSection: null,
     editToolbar: null,
     editModeButtons: null, // Collection
+    deleteSelectedButton: null, // Added
     editingStatusDiv: null
 };
 
@@ -70,14 +71,19 @@ export function populateElements() {
     elements.editingToolsSection = document.getElementById('editing-tools-section');
     elements.editToolbar = document.getElementById('edit-toolbar');
     elements.editModeButtons = document.querySelectorAll('.edit-mode-btn');
+    elements.deleteSelectedButton = document.getElementById('delete-selected-btn');
     elements.editingStatusDiv = document.getElementById('editing-status');
 
     // Validation
     for (const key in elements) {
-        if (elements[key] === null && !key.includes('Checkboxes') && !key.includes('Buttons')) { // Exclude collections for now
-             console.warn(`DOM element not found for key: ${key}`);
-        } else if (elements[key] instanceof NodeList && elements[key].length === 0 && (key.includes('Checkboxes') || key.includes('Buttons'))) {
-             console.warn(`No DOM elements found for NodeList key: ${key}`);
+        const isCollection = key.endsWith('Buttons') || key.endsWith('Checkboxes');
+        if (elements[key] === null && !isCollection) {
+            console.warn(`DOM element not found for key: ${key}`);
+        } else if (isCollection && elements[key] instanceof NodeList && elements[key].length === 0) {
+            console.warn(`No DOM elements found for NodeList key: ${key}`);
+        } else if (isCollection && !(elements[key] instanceof NodeList)) {
+            // Catch if a collection variable didn't get a NodeList
+            // console.warn(`Expected NodeList but got different type for key: ${key}`);
         }
     }
     console.log("DOM elements populated.");

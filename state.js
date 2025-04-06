@@ -147,3 +147,34 @@ export function clearFullAppState() {
      resetViewport();
      resetEditingState();
 }
+
+/**
+ * Deletes a detected blob by its index in the `detectedBlobs` array.
+ * Handles index validation and ensures selection is cleared if it matches the deleted index.
+ * @param {number} index - The index of the blob to delete.
+ * @returns {boolean} True if deletion was successful, false otherwise.
+ */
+export function deleteBlobByIndex(index) {
+    if (index === null || index < 0 || index >= appState.detectedBlobs.length) {
+        console.warn(`Attempted to delete invalid blob index: ${index}`);
+        return false;
+    }
+
+    const deletedBlob = appState.detectedBlobs.splice(index, 1); // Remove the blob
+    console.log(`Deleted blob at index ${index}:`, deletedBlob[0]);
+
+    // Clear selection if the deleted blob was selected
+    if (appState.editing.selectedBlobIndex === index) {
+        appState.editing.selectedBlobIndex = null;
+    }
+    // Adjust selection index if a blob *before* the selected one was deleted
+    else if (appState.editing.selectedBlobIndex !== null && index < appState.editing.selectedBlobIndex) {
+         appState.editing.selectedBlobIndex--;
+    }
+
+    return true;
+}
+
+export function setGrayscaleImage(imgData) {
+    appState.grayscaleImageData = imgData;
+}

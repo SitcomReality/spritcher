@@ -1,19 +1,41 @@
 import { elements } from 'dom-elements';
-import { appState, setEditModeState, setSelectedBlobIndex } from 'state';
+import { appState, setEditModeState, setSelectedBlobIndex, deleteBlobByIndex } from 'state';
 import { updateDebugOverlays } from 'debug-controller'; // For highlighting
+import { clearGeneratedSpritesheet } from 'spritesheet-controller'; // To invalidate spritesheet on delete
+import { invalidateProcessing } from 'processing-controller'; // To mark results as potentially stale
 
 export function initEditingController() {
     elements.editModeButtons.forEach(button => {
         button.addEventListener('click', () => setEditModeAndClearSelection(button.dataset.mode));
-    }
+    });
+    elements.deleteSelectedButton.addEventListener('click', handleDeleteSelected);
     elements.imagePreviewContainer.addEventListener('click', handlePreviewClick);
     setEditModeUI(appState.editing.currentEditMode); // Set initial mode UI
     updateEditModeUI(); // Update enable/disable state
 }
 
+function handleDeleteSelected() {
+    const selectedIndex = appState.editing.selectedBlobIndex;
+    if (selectedIndex !== null) {
+        const success = deleteBlobByIndex(selectedIndex);
+        if (success) {
+            // State automatically clears selection if it matches deleted index
+            console.log(`Blob ${selectedIndex} deleted.`);
+            clearGeneratedSpritesheet(); // Invalidate generated spritesheet
+            invalidateProcessing(true); // Keep thresholded, but mark CCL/Blobs as needing update if re-run
+            elements.processingStatusDiv.textContent = `Sprite ${selectedIndex} deleted. Spritesheet needs regenerating.`;
+            updateDebugOverlays(); // Redraw overlays without the deleted box
+            updateEditModeUI(); // Update button states (delete button should become disabled)
+            updateEditingStatus(); // Update status text
+        }
+    } else {
+        console.warn("Delete button clicked but no blob selected.");
+    }
+}
+
 function setEditModeAndClearSelection(newMode) {
     if (appState.editing.currentEditMode !== newMode) {
-         setSelectedBlobIndex(null); // Deselect when changing mode
+        setSelectedBlobIndex(null); // Deselect when changing mode
     }
     setEditModeUI(newMode);
 }
@@ -76,6 +98,9 @@ export function updateEditModeUI() {
         button.disabled = disabled;
     });
 
+    // Handle the separate delete button
+    elements.deleteSelectedButton.disabled = !isBlobSelected || !hasBlobs;
+
     // Re-apply active class to the current mode button, as disable might affect appearance
     elements.editModeButtons.forEach(button => {
         button.classList.toggle('active', button.dataset.mode === appState.editing.currentEditMode && !button.disabled);
@@ -83,7 +108,6 @@ export function updateEditModeUI() {
 
     updateEditingStatus(); // Status text might depend on enabled state too
 }
-
 
 function updateEditingStatus() {
     const { currentEditMode, selectedBlobIndex } = appState.editing;
@@ -103,12 +127,9 @@ function updateEditingStatus() {
         case 'add':
             status += 'Click and drag to draw a new sprite box. (Not Implemented)';
             break;
-        case 'delete':
-            status += isBlobSelected ? `Click 'Delete' button again to confirm delete Sprite ${selectedBlobIndex}. (Not Implemented)` : 'Select a sprite first.';
-            break;
         default:
-             status += '(Not Implemented)';
-             break;
+            status += '(Not Implemented)';
+            break;
     }
 
     elements.editingStatusDiv.textContent = status;
@@ -140,14 +161,14 @@ function handlePreviewClick(event) {
                 highlightSelectedBlob(); // Update visual highlight immediately
             } else {
                 console.warn("Clicked editable-bbox with invalid index:", indexStr);
-                 setSelectedBlobIndex(null); // Deselect if index is bad
-                 highlightSelectedBlob();
+                setSelectedBlobIndex(null); // Deselect if index is bad
+                highlightSelectedBlob();
             }
         } else {
             // Clicked outside any box (on the container itself), deselect
             if (appState.editing.selectedBlobIndex !== null) {
-                 setSelectedBlobIndex(null);
-                 highlightSelectedBlob();
+                setSelectedBlobIndex(null);
+                highlightSelectedBlob();
             }
         }
         event.stopPropagation(); // Prevent triggering other potential listeners on container
