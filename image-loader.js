@@ -2,6 +2,67 @@
  * Handles image loading from user input.
  * @param {HTMLInputElement} fileInput - The file input element.
  * @param {HTMLCanvasElement} canvas - The canvas element to draw the preview on.
+ * @returns {Promise<HTMLImageElement>} A promise that resolves with the loaded image element.
+ */
+export async function loadImage(fileInput, canvas) {
+    return new Promise((resolve, reject) => {
+        const file = fileInput.files[0];
+        if (!file) {
+            reject(new Error("No file selected."));
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const img = new Image();
+            img.onload = () => {
+                // Draw initial preview
+                const ctx = canvas.getContext('2d');
+                canvas.width = img.naturalWidth;
+                canvas.height = img.naturalHeight;
+                ctx.drawImage(img, 0, 0);
+                console.log(`Image loaded: ${img.width}x${img.height}`);
+                resolve(img);
+            };
+            img.onerror = (err) => {
+                console.error("Image loading error:", err);
+                reject(new Error("Failed to load image."));
+            };
+            img.src = e.target.result;
+        };
+        reader.onerror = (err) => {
+            console.error("File reader error:", err);
+            reject(new Error("Failed to read file."));
+        };
+        reader.readAsDataURL(file);
+    });
+}
+
+/**
+ * Gets the pixel data for the entire image from a canvas.
+ * @param {HTMLCanvasElement} canvas - The canvas element containing the image.
+ * @returns {ImageData | null} The ImageData object or null if canvas is empty.
+ */
+export function getImageDataFromCanvas(canvas) {
+    const ctx = canvas.getContext('2d', { willReadFrequently: true }); // Optimization hint
+    if (!canvas.width || !canvas.height) {
+        console.warn("Canvas has no dimensions, cannot get ImageData.");
+        return null;
+    }
+    try {
+        return ctx.getImageData(0, 0, canvas.width, canvas.height);
+    } catch (e) {
+        console.error("Error getting ImageData:", e);
+        // This can happen due to CORS issues if the image source is external
+        // and the canvas is "tainted", but shouldn't be an issue with File API uploads.
+        return null;
+    }
+}
+
+/**
+ * Handles image loading from user input.
+ * @param {HTMLInputElement} fileInput - The file input element.
+ * @param {HTMLCanvasElement} canvas - The canvas element to draw the preview on.
  * @returns {Promise<{img: HTMLImageElement, naturalWidth: number, naturalHeight: number}>} A promise that resolves with the loaded image element and its natural dimensions.
  */
 export async function loadImage(fileInput, canvas) {
@@ -75,3 +136,4 @@ export function getImageDataFromCanvas(canvas) {
         return null;
     }
 }
+
