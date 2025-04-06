@@ -9,11 +9,11 @@
 *   **Implement Sprite Editing Tools:**
     *   **Selection:** (Complete)
     *   **Deletion:** (Complete)
-    *   **Boundary Editing:** (Implementing Now)
-    *   **Add Box:** (Future)
-    *   **Split/Merge:** (Future - Low Priority)
+    *   **Boundary Editing:** (Complete)
+    *   **Add Box:** (Complete)
+    *   **Split/Merge:** (Future - Low Priority) <--- NEXT STEP (if pursued)
 *   **Palette Reduction:** (Future)
 *   **Web Worker Optimization:** (Future)
 
-**Next Step:** Implement adding new sprite boxes manually.
+**Next Step:** Implement Split/Merge tools (low priority), or proceed with further testing/refinement or Palette Reduction.
 

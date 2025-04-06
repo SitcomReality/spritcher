@@ -45,6 +45,7 @@ section {
 #image-preview-container.pan-mode { cursor: grab; }
 #image-preview-container.pan-mode.grabbing { cursor: grabbing; }
 #image-preview-container.select-mode { cursor: default; }
+#image-preview-container.add-mode { cursor: crosshair; }
 
 #image-preview-canvas {
     display: block;
@@ -212,6 +213,14 @@ select {
     border-width: 3px;
     box-shadow: 0 0 5px rgba(0, 255, 0, 0.7);
     z-index: 10;
+}
+
+.adding-bbox-temp {
+    position: absolute;
+    border: 2px dashed orange;
+    box-sizing: border-box;
+    pointer-events: none; 
+    z-index: 15; 
 }
 
 .resize-handle {

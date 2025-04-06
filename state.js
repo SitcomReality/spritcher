@@ -205,3 +205,31 @@ export function updateBlobBoundsByIndex(index, newBounds) {
      console.log(`Updated bounds for blob ${index}:`, blob.bounds);
      return true;
 }
+
+/**
+ * Adds a new blob to the `detectedBlobs` array.
+ * Creates a unique ID for the new blob.
+ * @param {{ minX: number, minY: number, width: number, height: number }} bounds - The bounds of the new blob.
+ */
+export function addBlob(bounds) {
+     if (!bounds || bounds.width <= 0 || bounds.height <= 0) {
+         console.warn("Attempted to add blob with invalid bounds:", bounds);
+         return;
+     }
+
+     // Generate a simple unique ID (negative to distinguish from CCL-generated IDs, if needed)
+     // Or use a more robust method like finding the max existing ID + 1
+     const existingIds = new Set(appState.detectedBlobs.map(b => b.id).filter(id => typeof id === 'number'));
+     let newId = -1;
+     while (existingIds.has(newId)) {
+         newId--;
+     }
+
+     const newBlob = {
+         id: newId, // Or Date.now(), or uuid later
+         pixels: bounds.width * bounds.height, // Estimate or leave as 0? Use area for now.
+         bounds: { ...bounds, maxX: bounds.minX + bounds.width - 1, maxY: bounds.minY + bounds.height - 1 } // Ensure maxX/maxY are calculated
+     };
+
+     appState.detectedBlobs.push(newBlob);
+}
