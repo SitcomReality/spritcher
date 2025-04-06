@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spritcher</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Spritcher</h1>
+
+        <section id="upload-section">
+            <h2>1. Upload Image</h2>
+            <input type="file" id="image-upload" accept="image/*">
+            <div id="image-preview-container">
+                <canvas id="image-preview-canvas"></canvas>
+                <div id="debug-overlays"></div> 
+            </div>
+             <div class="zoom-controls">
+                <button id="zoom-in-button">+</button>
+                <button id="zoom-out-button">-</button>
+            </div>
+        </section>
+
+        <section id="settings-section">
+            <h2>2. Settings</h2>
+            <div class="setting">
+                <label for="threshold-slider">Threshold:</label>
+                <input type="range" id="threshold-slider" min="0" max="255" value="128">
+                <span id="threshold-value">128</span>
+            </div>
+             <div class="setting">
+                <label for="min-sprite-size-slider">Min Sprite Size (pixels):</label>
+                <input type="range" id="min-sprite-size-slider" min="1" max="500" value="10">
+                <span id="min-sprite-size-value">10</span>
+            </div>
+            <fieldset>
+                <legend>Debug Overlays</legend>
+                 <label><input type="checkbox" id="show-grayscale-checkbox"> Show Grayscale</label>
+                 <label><input type="checkbox" id="show-threshold-checkbox"> Show Thresholded</label>
+                 <label><input type="checkbox" id="show-ccl-checkbox"> Show CCL IDs</label>
+                 <label><input type="checkbox" id="show-bboxes-checkbox"> Show Detected BBoxes</label>
+            </fieldset>
+        </section>
+
+        <section id="processing-section">
+            <h2>3. Process Image</h2>
+            <button id="process-button">Detect Sprites</button>
+            <div id="processing-status"></div>
+        </section>
+
+        <section id="spritesheet-section">
+            <h2>4. Spritesheet Preview & Generation</h2>
+             <div class="setting">
+                <label for="grid-cols-input">Columns:</label>
+                <input type="number" id="grid-cols-input" min="1" value="8">
+            </div>
+             <div class="setting">
+                <label for="padding-input">Padding (px):</label>
+                <input type="number" id="padding-input" min="0" value="2">
+            </div>
+             <div class="setting">
+                 <label for="alignment-select">Alignment:</label>
+                 <select id="alignment-select">
+                     <option value="top-left">Top Left</option>
+                     <option value="center">Center</option>
+                 </select>
+             </div>
+            <button id="preview-spritesheet-button">Preview Spritesheet</button>
+            <div id="spritesheet-preview-container">
+                 <canvas id="spritesheet-preview-canvas"></canvas>
+            </div>
+            <button id="download-spritesheet-button" disabled>Download Spritesheet</button>
+        </section>
+
+    </div>
+
+    <script type="importmap">
+    {
+        "imports": {
+            "image-loader": "./image-loader.js",
+            "image-processor": "./image-processor.js",
+            "blob-detector": "./blob-detector.js",
+            "spritesheet-generator": "./spritesheet-generator.js",
+            "ui-controller": "./ui-controller.js",
+            "utils": "./utils.js"
+        }
+    }
+    </script>
+    <script type="module" src="main.js"></script>
+<script defer src="https://static.cloudflareinsights.com/beacon.min.js/v8c78df7c7c0f484497ecbca7046644da1771523124516" integrity="sha512-8DS7rgIrAmghBFwoOTujcf6D9rXvH8xm8JQ1Ja01h9QX8EzXldiszufYa4IFfKdLUKTTrnSFXLDkUEOTrZQ8Qg==" data-cf-beacon='{"version":"2024.11.0","token":"4c6229722a6346bc8eb5cb0e5eae5d41","server_timing":{"name":{"cfCacheStatus":true,"cfEdge":true,"cfExtPri":true,"cfL4":true,"cfOrigin":true,"cfSpeedBrain":true},"location_startswith":null}}' crossorigin="anonymous"></script>
+</body>
+</html>
+
