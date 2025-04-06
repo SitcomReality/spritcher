@@ -69,6 +69,20 @@
             </fieldset>
         </section>
 
+        <section id="editing-tools-section" style="display: none;"> 
+             <h2>Sprite Editing Tools</h2>
+             <div id="edit-toolbar">
+                 <button id="pan-mode-btn" class="edit-mode-btn active" data-mode="pan" title="Pan/Zoom Mode">Pan</button>
+                 <button id="select-mode-btn" class="edit-mode-btn" data-mode="select" title="Select Sprites" disabled>Select</button>
+                 <button id="edit-bounds-mode-btn" class="edit-mode-btn" data-mode="edit-bounds" title="Edit Boundaries (Select First)" disabled>Edit Bounds</button>
+                 <button id="add-box-mode-btn" class="edit-mode-btn" data-mode="add" title="Add New Sprite Box" disabled>Add Box</button>
+                 <button id="split-mode-btn" class="edit-mode-btn" data-mode="split" title="Split Sprite (Not Implemented)" disabled>Split</button>
+                 <button id="merge-mode-btn" class="edit-mode-btn" data-mode="merge" title="Merge Sprites (Not Implemented)" disabled>Merge</button>
+                 <button id="delete-mode-btn" class="edit-mode-btn" data-mode="delete" title="Delete Selected Sprite" disabled>Delete</button>
+             </div>
+             <div id="editing-status" style="margin-top: 10px; font-style: italic; color: #555;"></div>
+        </section>
+
         <section id="processing-section">
             <h2>3. Process Image</h2>
             <button id="process-button">Detect Sprites</button>
