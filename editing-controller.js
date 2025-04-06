@@ -33,7 +33,8 @@ function handleDeleteSelected() {
     }
 }
 
-function setEditModeAndClearSelection(newMode) {
+// Export this function so it can be called from processing-controller
+export function setEditModeAndClearSelection(newMode) {
     if (appState.editing.currentEditMode !== newMode) {
         setSelectedBlobIndex(null); // Deselect when changing mode
     }
@@ -80,7 +81,6 @@ export function updateEditModeUI() {
                 disabled = !hasBlobs;
                 break;
             case 'edit-bounds':
-            case 'delete':
                 disabled = !hasBlobs || !isBlobSelected; // Require a selection
                 break;
             case 'add':
