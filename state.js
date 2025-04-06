@@ -183,6 +183,41 @@ export function clearSelectedSprites() {
     console.log("Cleared all selected sprites.");
 }
 
+/**
+ * Reorders the selectedSpritesForSheet array based on drag-and-drop action.
+ * @param {string} draggedSpriteId - The uniqueId of the sprite being dragged.
+ * @param {string | null} targetSpriteId - The uniqueId of the sprite being dropped onto, or null if dropped on container.
+ * @returns {boolean} - True if reordering was successful, false otherwise.
+ */
+export function reorderSelectedSprites(draggedSpriteId, targetSpriteId) {
+    const draggedIndex = appState.selectedSpritesForSheet.findIndex(s => s.uniqueId === draggedSpriteId);
+
+    if (draggedIndex === -1) {
+        console.error("Dragged sprite not found in selection:", draggedSpriteId);
+        return false;
+    }
+
+    // Remove the dragged item temporarily
+    const [draggedItem] = appState.selectedSpritesForSheet.splice(draggedIndex, 1);
+
+    let targetIndex = -1;
+    if (targetSpriteId) {
+         targetIndex = appState.selectedSpritesForSheet.findIndex(s => s.uniqueId === targetSpriteId);
+    }
+
+    if (targetIndex !== -1) {
+        // Insert before the target item
+        appState.selectedSpritesForSheet.splice(targetIndex, 0, draggedItem);
+        console.log(`Reordered sprite ${draggedSpriteId} to index ${targetIndex} (before ${targetSpriteId}).`);
+    } else {
+        // If targetId is null or not found, add to the end
+        appState.selectedSpritesForSheet.push(draggedItem);
+        console.log(`Reordered sprite ${draggedSpriteId} to the end.`);
+    }
+
+    return true;
+}
+
 export function addAllAvailableSpritesToSelection() {
     let addedCount = 0;
     appState.extractedSprites.forEach(availableSprite => {

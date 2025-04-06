@@ -108,6 +108,25 @@
     position: relative; /* For potential future absolute elements like index number */
 }
 
+/* NEW: Styles for Drag and Drop */
+.sprite-preview-item.dragging {
+    opacity: 0.5;
+    border: 2px dashed var(--text-muted);
+    transform: scale(0.95);
+}
+
+/* Style for the element being dragged over */
+.sprite-preview-item.drag-over {
+    border-top: 3px solid var(--text-link); /* Visual indicator for drop target */
+    /* Alternative: Use background or ::before/::after */
+}
+
+/* Style for the container when dragging over it (optional, e.g., background change) */
+.extracted-sprites-container.drag-over-container {
+    /* background-color: var(--bg-tertiary); */
+    /* border-style: solid; */
+}
+
 /* Hover effect */
 #available-sprites-display .sprite-preview-item:hover {
     border-color: var(--text-link); /* Blue border on hover in available */
