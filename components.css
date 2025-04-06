@@ -1,0 +1,157 @@
+/* General Component Styles (Buttons, Inputs, Fieldsets, etc.) */
+
+/* Settings Layout */
+.setting {
+    margin-bottom: 15px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.setting label {
+    flex-basis: 180px;
+    flex-shrink: 0;
+    font-weight: bold;
+    color: var(--text-secondary);
+    transition: color 0.3s ease;
+    padding-right: 5px;
+}
+
+.setting-hint {
+    font-size: 0.85em;
+    color: var(--text-muted);
+    margin-left: 5px;
+    transition: color 0.3s ease;
+}
+
+/* Fieldsets */
+fieldset {
+    border: 1px solid var(--border-secondary);
+    padding: 15px;
+    margin-top: 15px;
+    border-radius: 4px;
+    transition: border-color 0.3s ease;
+}
+
+fieldset legend {
+    padding: 0 10px;
+    font-weight: bold;
+    color: var(--text-secondary);
+    transition: color 0.3s ease;
+}
+
+fieldset label {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    margin-right: 15px;
+    margin-bottom: 5px;
+    font-weight: normal;
+    color: var(--text-primary);
+    flex-basis: auto;
+    transition: color 0.3s ease;
+}
+
+/* General Button Styles */
+button {
+    padding: 10px 15px;
+    background-color: var(--bg-button);
+    color: var(--text-button);
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.2s ease, box-shadow 0.2s ease;
+    margin-right: 10px;
+    font-weight: 500;
+}
+
+button:hover:not(:disabled) {
+    background-color: var(--bg-button-hover);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+button:active:not(:disabled) {
+    background-color: var(--bg-button-active);
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+button:disabled {
+    background-color: var(--bg-button-disabled);
+    cursor: not-allowed;
+    opacity: 0.6;
+    color: var(--text-muted);
+    transition: background-color 0.3s ease, color 0.3s ease, opacity 0.3s ease;
+}
+
+/* Input Styles */
+input[type="file"] {
+     border: 1px solid var(--border-interactive);
+     display: inline-block;
+     padding: 8px 12px;
+     cursor: pointer;
+     border-radius: 4px;
+     background-color: var(--bg-secondary);
+     color: var(--text-primary);
+     transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+ }
+ input[type="file"]:hover {
+     border-color: var(--text-link);
+ }
+
+input[type="range"] {
+    cursor: pointer;
+    flex-grow: 1;
+    max-width: 250px;
+    accent-color: var(--bg-button);
+}
+
+input[type="number"],
+select {
+    padding: 8px;
+    border: 1px solid var(--border-interactive);
+    border-radius: 4px;
+    width: 90px;
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+}
+
+input[type="number"]:focus,
+select:focus {
+    outline: none;
+    border-color: var(--text-link);
+    box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+}
+.dark-mode input[type="number"]:focus,
+.dark-mode select:focus {
+    box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.35);
+}
+
+/* Status Divs */
+#processing-status, #editing-status {
+    margin-top: 10px;
+    font-style: normal;
+    color: var(--text-muted);
+    min-height: 1.2em;
+    padding: 5px 8px;
+    background-color: var(--bg-secondary);
+    border-radius: 4px;
+    display: inline-block;
+    transition: color 0.3s ease, background-color 0.3s ease;
+}
+
+/* Threshold Settings Group Visibility */
+.threshold-settings-group {
+    display: none;
+    border: 1px dashed var(--border-secondary);
+    padding: 20px;
+    margin-top: 10px;
+    margin-bottom: 15px;
+    border-radius: 4px;
+    transition: border-color 0.3s ease;
+}
+
+.threshold-settings-group.visible {
+    display: block;
+}

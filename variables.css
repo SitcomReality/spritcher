@@ -1,0 +1,64 @@
+/* CSS Custom Properties (Theme Variables) */
+:root {
+    /* Light Theme (Default) */
+    --bg-primary: #ffffff;
+    --bg-secondary: #f4f4f4;
+    --bg-tertiary: #fafafa;
+    --bg-interactive: #e0e0e0; /* Backgrounds for elements like previews */
+    --bg-button: #007bff;
+    --bg-button-hover: #0056b3;
+    --bg-button-active: #004085;
+    --bg-button-delete: #dc3545;
+    --bg-button-delete-hover: #c82333;
+    --bg-button-disabled: #ccc;
+    --text-primary: #212529;
+    --text-secondary: #555;
+    --text-muted: #6c757d;
+    --text-button: #ffffff;
+    --text-link: #007bff;
+    --border-primary: #dee2e6;
+    --border-secondary: #ccc;
+    --border-interactive: #ced4da; /* Borders for inputs/selects */
+    --border-highlight: limegreen; /* Selection/Highlight */
+    --border-highlight-dark: darkgreen;
+    --shadow-primary: 0 2px 5px rgba(0, 0, 0, 0.1);
+    --shadow-highlight: 0 0 5px rgba(0, 255, 0, 0.7);
+    --overlay-bg: rgba(0, 0, 0, 0.5);
+    --overlay-text: yellow;
+    --resize-handle-bg: limegreen;
+    --resize-handle-border: darkgreen;
+    --adding-box-border: orange;
+    --editable-box-border: blue;
+}
+
+.dark-mode {
+    /* Dark Theme */
+    --bg-primary: #212529;
+    --bg-secondary: #343a40;
+    --bg-tertiary: #495057;
+    --bg-interactive: #6c757d;
+    --bg-button: #0d6efd; /* Slightly brighter blue */
+    --bg-button-hover: #0b5ed7;
+    --bg-button-active: #0a58ca;
+    --bg-button-delete: #dc3545;
+    --bg-button-delete-hover: #bb2d3b;
+    --bg-button-disabled: #555;
+    --text-primary: #f8f9fa;
+    --text-secondary: #adb5bd;
+    --text-muted: #889;
+    --text-button: #ffffff;
+    --text-link: #60a5fa; /* Lighter blue for links */
+    --border-primary: #495057;
+    --border-secondary: #6c757d;
+    --border-interactive: #889;
+    --border-highlight: #34d399; /* Lighter green */
+    --border-highlight-dark: #047857;
+    --shadow-primary: 0 2px 5px rgba(0, 0, 0, 0.3);
+    --shadow-highlight: 0 0 6px rgba(52, 211, 153, 0.6);
+    --overlay-bg: rgba(255, 255, 255, 0.2);
+    --overlay-text: lightyellow;
+    --resize-handle-bg: #34d399;
+    --resize-handle-border: #047857;
+    --adding-box-border: #fdba74; /* Lighter orange */
+    --editable-box-border: #93c5fd; /* Lighter blue */
+}

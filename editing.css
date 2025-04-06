@@ -1,0 +1,106 @@
+/* Editing Tools Styles (Toolbar, Status, Boxes, Handles) */
+
+/* Editing Toolbar */
+#edit-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 15px;
+    padding: 10px;
+    background-color: var(--bg-secondary);
+    border-radius: 4px;
+    transition: background-color 0.3s ease;
+}
+
+#edit-toolbar button {
+    padding: 8px 12px;
+    font-size: 0.9em;
+    margin-right: 0;
+}
+
+#edit-toolbar button.active {
+    background-color: var(--bg-button-active);
+    color: var(--text-button);
+    box-shadow: inset 0 1px 3px rgba(0,0,0,0.2);
+}
+
+#edit-toolbar button.active:hover:not(:disabled) {
+    background-color: var(--bg-button-active);
+}
+
+/* Delete Button Specific */
+#delete-selected-btn {
+    background-color: var(--bg-button-delete);
+}
+
+#delete-selected-btn:hover:not(:disabled) {
+    background-color: var(--bg-button-delete-hover);
+}
+
+#delete-selected-btn:disabled {
+    background-color: var(--bg-button-disabled);
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+/* Editable Bounding Box */
+.editable-bbox {
+    position: absolute;
+    border: 2px solid var(--editable-box-border);
+    box-sizing: border-box;
+    pointer-events: auto; /* Make them interactive */
+    cursor: pointer;
+    transition: border-color 0.2s ease;
+}
+.editable-bbox:hover {
+    border-color: var(--border-highlight);
+}
+
+.editable-bbox.selected {
+    border-color: var(--border-highlight);
+    border-width: 3px;
+    box-shadow: var(--shadow-highlight);
+    z-index: 10; /* Bring selected box above others */
+}
+.editable-bbox.selected:hover {
+     border-color: var(--border-highlight); /* Keep highlight color on hover */
+}
+
+/* Temporary Box for Adding */
+.adding-bbox-temp {
+    position: absolute;
+    border: 2px dashed var(--adding-box-border);
+    box-sizing: border-box;
+    pointer-events: none;
+    z-index: 15; /* Above other boxes */
+    background-color: rgba(253, 186, 116, 0.1);
+}
+.dark-mode .adding-bbox-temp {
+    background-color: rgba(253, 186, 116, 0.2);
+}
+
+/* Resize Handles */
+.resize-handle {
+    position: absolute;
+    width: 12px;
+    height: 12px;
+    background-color: var(--resize-handle-bg);
+    border: 1px solid var(--resize-handle-border);
+    border-radius: 2px;
+    box-sizing: border-box;
+    /* Center the handle on the corner/edge */
+    transform: translate(-50%, -50%);
+    z-index: 11; /* Above selected box, below adding box */
+    pointer-events: auto; /* Make handles interactive */
+    transition: background-color 0.3s ease, border-color 0.3s ease;
+}
+
+/* Resizing handle positions and cursors */
+.resize-handle.nw { top: 0; left: 0; cursor: nwse-resize; }
+.resize-handle.n  { top: 0; left: 50%; cursor: ns-resize; }
+.resize-handle.ne { top: 0; left: 100%; cursor: nesw-resize; }
+.resize-handle.w  { top: 50%; left: 0; cursor: ew-resize; }
+.resize-handle.e  { top: 50%; left: 100%; cursor: ew-resize; }
+.resize-handle.sw { top: 100%; left: 0; cursor: nesw-resize; }
+.resize-handle.s  { top: 100%; left: 50%; cursor: ns-resize; }
+.resize-handle.se { top: 100%; left: 100%; cursor: nwse-resize; }

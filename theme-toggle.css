@@ -1,0 +1,26 @@
+/* Theme Toggle Button Styles */
+.theme-toggle {
+    position: absolute;
+    top: 15px;
+    right: 20px;
+    cursor: pointer;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-secondary);
+    border-radius: 20px;
+    padding: 5px;
+    display: flex;
+    align-items: center;
+    transition: background-color 0.3s ease;
+}
+
+.theme-toggle svg {
+    width: 18px;
+    height: 18px;
+    fill: var(--text-secondary);
+    transition: fill 0.3s ease;
+}
+
+.theme-toggle:hover svg {
+    fill: var(--text-primary);
+}
+
