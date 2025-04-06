@@ -30,7 +30,7 @@ let thresholdSlider, thresholdValueSpan, minSizeSlider, minSizeValueSpan;
 let debugViewCheckboxes, debugOverlayCheckboxes; // Collections of checkboxes
 let processButton, processingStatusDiv;
 let gridColsInput, paddingInput, alignmentSelect;
-let generateSpritesheetButton, spritesheetPreviewCanvas, spritesheetPreviewContainer, downloadSpritesheetButton;
+let generateSpritesheetButton, spritesheetPreviewCanvas, spritesheetPreviewContainer, downloadSpritesheetButton; // Changed variable name
 let zoomInButton, zoomOutButton;
 
 
@@ -53,7 +53,7 @@ export function initUI() {
     gridColsInput = document.getElementById('grid-cols-input');
     paddingInput = document.getElementById('padding-input');
     alignmentSelect = document.getElementById('alignment-select');
-    generateSpritesheetButton = document.getElementById('generate-spritesheet-button');
+    generateSpritesheetButton = document.getElementById('generate-spritesheet-button'); // Use correct ID
     spritesheetPreviewCanvas = document.getElementById('spritesheet-preview-canvas');
     spritesheetPreviewContainer = document.getElementById('spritesheet-preview-container');
     downloadSpritesheetButton = document.getElementById('download-spritesheet-button');
@@ -76,7 +76,7 @@ export function initUI() {
     paddingInput.addEventListener('change', handleSpritesheetSettingsChange);
     alignmentSelect.addEventListener('change', handleSpritesheetSettingsChange);
 
-    generateSpritesheetButton.addEventListener('click', handleGenerateSpritesheet);
+    generateSpritesheetButton.addEventListener('click', handleGenerateSpritesheet); // Listen on the correct button
     downloadSpritesheetButton.addEventListener('click', handleDownloadSpritesheet);
 
     // Zoom and Pan Listeners
