@@ -112,17 +112,35 @@
         </section>
 
         <section id="extracted-sprites-section" style="display: none;">
-            <h2>5. Select & Order Sprites for Sheet</h2> 
-            <div class="extracted-sprites-toolbar">
-                <button id="select-all-sprites-btn" title="Select all extracted sprites">Select All</button>
-                <button id="deselect-all-sprites-btn" title="Deselect all extracted sprites">Deselect All</button>
-                <span id="extracted-sprites-count">0 sprites detected.</span>
+            <h2>5. Manage Sprites for Sheet</h2>
+
+            <div class="sprite-management-container">
+                <div class="sprite-panel available-sprites-panel">
+                    <h3>Available Sprites (from last detection)</h3>
+                    <div class="extracted-sprites-toolbar">
+                        <button id="add-all-available-btn" title="Add all available sprites to the sheet">Add All</button>
+                        <span id="available-sprites-count">0 sprites detected.</span>
+                    </div>
+                    <div id="available-sprites-display" class="extracted-sprites-container">
+                        <!-- Available sprite previews will be generated here by JS -->
+                        <p>Click 'Detect Sprites' to see individual sprites here.</p>
+                    </div>
+                     <div class="setting-hint">(Click on sprites above to add them to the 'Selected for Sheet' panel.)</div>
+                </div>
+
+                <div class="sprite-panel selected-sprites-panel">
+                    <h3>Selected for Sheet</h3>
+                    <div class="extracted-sprites-toolbar">
+                        <button id="remove-all-selected-btn" title="Remove all sprites from the sheet">Remove All</button>
+                         <span id="selected-sprites-count">0 sprites selected.</span>
+                    </div>
+                    <div id="selected-sprites-display" class="extracted-sprites-container selected-container">
+                        <!-- Selected sprite previews will be generated here by JS -->
+                         <p>Add sprites from the 'Available' panel.</p>
+                    </div>
+                    <div class="setting-hint">(Click on sprites above to remove them. Drag and drop to reorder - *coming soon*).</div>
+                </div>
             </div>
-            <div id="extracted-sprites-display" class="extracted-sprites-container">
-                <!-- Sprite previews will be generated here by JS -->
-                <p>Click 'Detect Sprites' to see individual sprites here.</p>
-            </div>
-            <div class="setting-hint">(Click on sprites below to toggle selection for the final spritesheet. Drag and drop to reorder - *coming soon*).</div>
         </section>
 
         <section id="spritesheet-section">

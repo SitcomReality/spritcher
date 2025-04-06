@@ -3,7 +3,7 @@ import { appState, addBlob, setSelectedBlobIndex } from 'state';
 import { clearGeneratedSpritesheet } from 'spritesheet-controller';
 import { updateDebugOverlays } from 'debug-controller';
 import { setEditModeAndClearSelection, updateEditModeUI } from 'mode-controller';
-import { displayExtractedSprites } from 'extracted-sprites-controller';
+import { displayExtractedSprites } from 'extracted-sprites-controller'; // Keep this to update available sprites
 
 // --- Local State for Adding Box ---
 let isAddingBox = false;
@@ -109,21 +109,23 @@ export function stopAddingBox(saveChanges) {
                     width: finalWidth,
                     height: finalHeight
                 };
-                const newDetectedIndex = addBlob(newBounds); // Add the new blob to the state (handles detected, extracted, selected)
+                // addBlob now only adds to detectedBlobs and extractedSprites (available)
+                const newDetectedIndex = addBlob(newBounds);
 
                 if (newDetectedIndex !== null) {
                     console.log("Added new blob:", newBounds);
-                    clearGeneratedSpritesheet(); // Invalidate generated sheet
+                    clearGeneratedSpritesheet(); // Invalidate generated sheet if settings change
 
-                    elements.processingStatusDiv.textContent = `New sprite added (${appState.detectedBlobs.length} total). Regeneration needed.`;
+                    elements.processingStatusDiv.textContent = `New sprite added (${appState.detectedBlobs.length} total). It is now in the 'Available' list.`;
 
                     updateDebugOverlays(); // Redraw overlays to include the new box
-                    displayExtractedSprites(); // Update the extracted sprites view
+                    displayExtractedSprites(); // Update the available sprites view AND selected view
                     updateEditModeUI(); // Update button states
 
-                    // Optionally select the newly added blob (in editing view) and switch to select mode
+                    // Optionally select the newly added blob (in editing view) and switch to select mode?
+                    // Let's keep it in Add mode for now, user can switch if needed.
                     setSelectedBlobIndex(newDetectedIndex); // Select in editing view
-                    setEditModeAndClearSelection('select'); // Switch mode after adding
+                    // setEditModeAndClearSelection('select'); // Switch mode after adding
 
                 } else {
                      console.error("Failed to add blob to state.");

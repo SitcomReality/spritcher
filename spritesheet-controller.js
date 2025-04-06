@@ -1,7 +1,7 @@
 import { elements } from 'dom-elements';
 import { appState, setGeneratedSpritesheet, clearGeneratedSpritesheetState } from 'state';
 import { generateSpritesheet, downloadCanvasAsPNG } from 'spritesheet-generator';
-import { disableAllControls } from 'ui-controller';
+import { disableAllControls } from 'ui-controller'; // Keep for disabling during generation
 
 export function initSpritesheetController() {
     elements.gridColsInput.addEventListener('change', handleSpritesheetSettingsChange);
@@ -21,11 +21,11 @@ function handleSpritesheetSettingsChange() {
 
 // Generates and displays the spritesheet using selected sprites
 async function handleGenerateSpritesheet() {
-    // Use selectedSpritesForSheet to determine which sprites to include and their order
-    const selectedIndices = appState.selectedSpritesForSheet;
+    // Use selectedSpritesForSheet which now holds the actual sprite objects in the desired order
+    const spritesToInclude = appState.selectedSpritesForSheet;
 
-    if (selectedIndices.length === 0) {
-        alert("No sprites selected for the spritesheet. Please select sprites in Step 5.");
+    if (spritesToInclude.length === 0) {
+        alert("No sprites selected for the spritesheet. Please add sprites to the 'Selected for Sheet' panel first.");
         return;
     }
     if (!appState.originalImageData) {
@@ -33,25 +33,12 @@ async function handleGenerateSpritesheet() {
         return;
     }
 
-    console.log(`Generating spritesheet with ${selectedIndices.length} selected sprites...`);
+    console.log(`Generating spritesheet with ${spritesToInclude.length} selected sprites...`);
     elements.processingStatusDiv.textContent = 'Generating spritesheet...';
     disableAllControls(true);
 
-    // Get the actual blob objects based on the selected indices and their order
-    const blobsToInclude = selectedIndices.map(index => {
-        // Ensure the index is valid (should be, but check anyway)
-        if (index >= 0 && index < appState.extractedSprites.length) {
-             return appState.extractedSprites[index].blob;
-        }
-        console.warn(`Invalid index ${index} found in selectedSpritesForSheet. Skipping.`);
-        return null;
-    }).filter(blob => blob !== null); // Filter out any nulls from invalid indices
-
-     if (blobsToInclude.length === 0) {
-        alert("Error: Could not find valid blob data for selected sprites.");
-        disableAllControls(false);
-        return;
-    }
+    // Extract just the blob data needed for generation
+    const blobsToInclude = spritesToInclude.map(spriteData => spriteData.blob);
 
     const cols = parseInt(elements.gridColsInput.value, 10) || 8;
     const padding = parseInt(elements.paddingInput.value, 10) || 0;
@@ -60,7 +47,7 @@ async function handleGenerateSpritesheet() {
     try {
         const resultCanvas = await generateSpritesheet(
             appState.originalImageData,
-            blobsToInclude, // Pass the filtered and ordered list of blobs
+            blobsToInclude, // Pass the list of blob objects
             cols,
             padding,
             alignment
@@ -97,12 +84,12 @@ function handleDownloadSpritesheet() {
     }
     console.log("Preparing spritesheet download...");
     let filename = 'spritcher_spritesheet.png';
+    // Keep existing filename logic...
     if (elements.imageUploadInput.files && elements.imageUploadInput.files[0]) {
         const originalName = elements.imageUploadInput.files[0].name;
         const baseName = originalName.substring(0, originalName.lastIndexOf('.')) || originalName;
         filename = `${baseName}_spritesheet.png`;
     } else if (appState.originalImageInfo && appState.originalImageInfo.img.src) {
-        // Fallback if file input is cleared but image loaded (e.g. from URL later?)
          try {
             const url = new URL(appState.originalImageInfo.img.src);
             const pathnameParts = url.pathname.split('/');

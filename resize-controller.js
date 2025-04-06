@@ -21,14 +21,14 @@ export function handleMouseDownResize(event) {
      // Called by mode-controller if mode is 'edit-bounds' and target is a handle
     if (event.button !== 0 || appState.editing.currentEditMode !== 'edit-bounds') return;
 
-    const selectedIndex = appState.editing.selectedBlobIndex;
-    if (selectedIndex === null) return; // Should not happen if UI is correct, but safety check
+    const selectedIndex = appState.editing.selectedBlobIndex; 
+    if (selectedIndex === null) return;
 
     const handle = event.target;
-    if (!handle.classList.contains('resize-handle')) return; // Ensure it's really a handle
+    if (!handle.classList.contains('resize-handle')) return;
 
-    event.preventDefault(); // Prevent text selection, etc.
-    event.stopPropagation(); // Prevent triggering pan or select listeners
+    event.preventDefault();
+    event.stopPropagation();
 
     dragHandleType = handle.dataset.handleType;
     selectedBoxElement_resize = handle.closest('.editable-bbox');
@@ -40,11 +40,12 @@ export function handleMouseDownResize(event) {
 
     startDragX_client = event.clientX;
     startDragY_client = event.clientY;
+    // Get bounds from the state array (detectedBlobs)
     const currentBounds = appState.detectedBlobs[selectedIndex].bounds;
-    startBounds_resize = { ...currentBounds }; // Create a copy
+    startBounds_resize = { ...currentBounds }; 
 
     isResizing = true;
-    elements.imagePreviewContainer.style.cursor = handle.style.cursor; // Set container cursor during resize
+    elements.imagePreviewContainer.style.cursor = handle.style.cursor; 
     console.log(`Start resize: handle=${dragHandleType}, startBounds=`, { ...startBounds_resize });
 }
 
@@ -60,7 +61,7 @@ export function handleMouseMoveResize(event) {
     const dx = currentZoom !== 0 ? (event.clientX - startDragX_client) / currentZoom : 0;
     const dy = currentZoom !== 0 ? (event.clientY - startDragY_client) / currentZoom : 0;
 
-    let newBounds = { ...startBounds_resize }; // Work on a copy
+    let newBounds = { ...startBounds_resize }; 
 
     // Adjust bounds based on the handle being dragged
     if (dragHandleType.includes('n')) {
@@ -84,17 +85,17 @@ export function handleMouseMoveResize(event) {
             // If dragging 'w' handle made width negative, lock minX
             newBounds.minX = startBounds_resize.minX + startBounds_resize.width - 1;
         }
-        newBounds.width = 1; // Clamp width
+        newBounds.width = 1; 
     }
     if (newBounds.height < 1) {
          if (dragHandleType.includes('n')) {
             // If dragging 'n' handle made height negative, lock minY
             newBounds.minY = startBounds_resize.minY + startBounds_resize.height - 1;
         }
-        newBounds.height = 1; // Clamp height
+        newBounds.height = 1; 
     }
 
-    // Update the visual representation directly
+    // Update the visual representation directly (using rounded values for style)
     selectedBoxElement_resize.style.left = `${Math.round(newBounds.minX)}px`;
     selectedBoxElement_resize.style.top = `${Math.round(newBounds.minY)}px`;
     selectedBoxElement_resize.style.width = `${Math.round(newBounds.width)}px`;
@@ -104,24 +105,25 @@ export function handleMouseMoveResize(event) {
 export function handleMouseUpResize(event) {
      // Called by mode-controller's global mouseup if isResizing is true
     if (!isResizing) return;
-    if (event.button !== 0) return; // Only react to left mouse button up
+    if (event.button !== 0) return; 
 
-    event.stopPropagation(); // Prevent other listeners
+    event.stopPropagation(); 
 
-    stopResizing(true); // Attempt to save changes
+    stopResizing(true); 
 }
 
 // Function to stop resizing, callable internally or by mode controller on mode switch
 export function stopResizing(saveChanges) {
     if (!isResizing) return;
 
-    const selectedIndex = appState.editing.selectedBlobIndex;
+    const selectedIndex = appState.editing.selectedBlobIndex; 
 
-    isResizing = false; // Set state first
-    elements.imagePreviewContainer.style.cursor = 'default'; // Reset cursor
+    isResizing = false; 
+    elements.imagePreviewContainer.style.cursor = 'default'; 
 
     if (saveChanges && selectedBoxElement_resize && startBounds_resize && selectedIndex !== null) {
         // Get final bounds directly from the element style we were updating
+        // Use parseFloat as styles might contain px
         const finalMinX = parseFloat(selectedBoxElement_resize.style.left);
         const finalMinY = parseFloat(selectedBoxElement_resize.style.top);
         const finalWidth = parseFloat(selectedBoxElement_resize.style.width);
@@ -139,11 +141,12 @@ export function stopResizing(saveChanges) {
             if (newBounds.minX !== startBounds_resize.minX || newBounds.minY !== startBounds_resize.minY ||
                 newBounds.width !== startBounds_resize.width || newBounds.height !== startBounds_resize.height)
             {
-                const updated = updateBlobBoundsByIndex(selectedIndex, newBounds); // Updates detectedBlobs and extractedSprites
+                 // updateBlobBoundsByIndex now handles updating detectedBlobs, extractedSprites, and selectedSpritesForSheet
+                const updated = updateBlobBoundsByIndex(selectedIndex, newBounds);
 
                 if (updated) {
-                    clearGeneratedSpritesheet(); // Invalidate generated sheet
-                    displayExtractedSprites(); // Update previews as bounds changed
+                    clearGeneratedSpritesheet(); 
+                    displayExtractedSprites(); 
                     elements.processingStatusDiv.textContent = `Sprite ${selectedIndex} resized. Regeneration needed.`;
                     console.log(`Resize end: Saved new bounds for blob ${selectedIndex}`, newBounds);
                 } else {
@@ -183,8 +186,8 @@ export function stopResizing(saveChanges) {
     startDragY_client = 0;
     selectedBoxElement_resize = null;
 
-    updateDebugOverlays(); // Ensure handles are drawn correctly based on selection/mode
-    updateEditModeUI(); // Let mode-controller handle UI updates
+    updateDebugOverlays(); 
+    updateEditModeUI(); 
 
 }
 

@@ -39,18 +39,20 @@ export const elements = {
     deleteSelectedButton: null,
     editingStatusDiv: null,
     extractedSpritesSection: null,
-    extractedSpritesToolbar: null,
-    selectAllSpritesButton: null,
-    deselectAllSpritesButton: null,
-    extractedSpritesCountSpan: null,
-    extractedSpritesDisplayContainer: null
+    // Extracted Sprites Section NEW/Renamed
+    availableSpritesDisplayContainer: null,
+    availableSpritesCountSpan: null,
+    addAllAvailableButton: null,
+    selectedSpritesDisplayContainer: null,
+    selectedSpritesCountSpan: null,
+    removeAllSelectedButton: null,
 };
 
 export function populateElements() {
-    elements.appContainer = document.querySelector('.app-container'); // Updated selector
-    elements.themeToggleButton = document.getElementById('theme-toggle-button'); // Added
+    elements.appContainer = document.querySelector('.app-container');
+    elements.themeToggleButton = document.getElementById('theme-toggle-button');
     elements.imageUploadInput = document.getElementById('image-upload');
-    elements.imageUploadLabel = document.querySelector('label[for="image-upload"]'); 
+    elements.imageUploadLabel = document.querySelector('label[for="image-upload"]');
     elements.imagePreviewCanvas = document.getElementById('image-preview-canvas');
     elements.imagePreviewContainer = document.getElementById('image-preview-container');
     elements.debugOverlaysContainer = document.getElementById('debug-overlays');
@@ -58,11 +60,11 @@ export function populateElements() {
     elements.manualThresholdSettingsDiv = document.getElementById('manual-threshold-settings');
     elements.adaptiveThresholdSettingsDiv = document.getElementById('adaptive-threshold-settings');
     elements.thresholdSlider = document.getElementById('threshold-slider');
-    elements.thresholdNumberInput = document.getElementById('threshold-number-input'); // Added
+    elements.thresholdNumberInput = document.getElementById('threshold-number-input');
     elements.adaptiveBlocksizeInput = document.getElementById('adaptive-blocksize-input');
     elements.adaptiveCInput = document.getElementById('adaptive-c-input');
     elements.minSizeSlider = document.getElementById('min-sprite-size-slider');
-    elements.minSizeNumberInput = document.getElementById('min-sprite-size-number-input'); // Added
+    elements.minSizeNumberInput = document.getElementById('min-sprite-size-number-input');
     elements.debugViewCheckboxes = document.querySelectorAll('input[name="debug-view"]');
     elements.debugOverlayCheckboxes = document.querySelectorAll('input[name="debug-overlay"]');
     elements.showGrayscaleCheckbox = document.getElementById('show-grayscale-checkbox');
@@ -86,20 +88,28 @@ export function populateElements() {
     elements.deleteSelectedButton = document.getElementById('delete-selected-btn');
     elements.editingStatusDiv = document.getElementById('editing-status');
     elements.extractedSpritesSection = document.getElementById('extracted-sprites-section');
-    elements.extractedSpritesToolbar = document.querySelector('.extracted-sprites-toolbar');
-    elements.selectAllSpritesButton = document.getElementById('select-all-sprites-btn');
-    elements.deselectAllSpritesButton = document.getElementById('deselect-all-sprites-btn');
-    elements.extractedSpritesCountSpan = document.getElementById('extracted-sprites-count');
-    elements.extractedSpritesDisplayContainer = document.getElementById('extracted-sprites-display');
+
+    // Extracted Sprites Section NEW/Renamed
+    elements.availableSpritesDisplayContainer = document.getElementById('available-sprites-display');
+    elements.availableSpritesCountSpan = document.getElementById('available-sprites-count');
+    elements.addAllAvailableButton = document.getElementById('add-all-available-btn'); 
+    elements.selectedSpritesDisplayContainer = document.getElementById('selected-sprites-display');
+    elements.selectedSpritesCountSpan = document.getElementById('selected-sprites-count'); 
+    elements.removeAllSelectedButton = document.getElementById('remove-all-selected-btn'); 
 
     // Validation
     for (const key in elements) {
         const isCollection = key.endsWith('Buttons') || key.endsWith('Checkboxes');
         if (elements[key] === null && !isCollection) {
-            console.warn(`DOM element not found for key: ${key}`);
+            if (document.getElementById(key.replace(/([A-Z])/g, '-$1').toLowerCase()) || document.querySelector(`#${key.replace(/([A-Z])/g, '-$1').toLowerCase()}`)) {
+                console.warn(`DOM element reference is null for key: ${key}`);
+            } else {
+            }
+
+        } else if (isCollection && elements[key] instanceof NodeList && elements[key].length === 0) {
         } else if (isCollection && !(elements[key] instanceof NodeList)) {
-             console.warn(`Expected NodeList but got different type for key: ${key}`);
+            console.warn(`Expected NodeList but got different type for key: ${key}`, elements[key]);
         }
     }
-    console.log("DOM elements populated.");
+    console.log("DOM elements populated (with split sprite sections).");
 }
