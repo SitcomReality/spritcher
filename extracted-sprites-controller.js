@@ -250,8 +250,9 @@ function updateSelectionCounts() {
 
 /**
  * Updates the enabled/disabled state of buttons in the section.
+ * EXPORT this function.
  */
-function updateButtonStates() {
+export function updateButtonStates() { 
     const availableCount = appState.extractedSprites.length;
     const selectedCount = appState.selectedSpritesForSheet.length;
     const allAvailableAreSelected = availableCount > 0 && appState.extractedSprites.every(avail =>
