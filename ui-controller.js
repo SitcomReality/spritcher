@@ -1,32 +1,33 @@
-import { loadImageFromFile, getImageDataFromCanvas } from 'image-loader'; 
+import { loadImageFromFile, getImageDataFromCanvas } from 'image-loader';
 import { elements, populateElements } from 'dom-elements';
 import { appState, setOriginalImage, clearFullAppState, resetThresholdSettings } from 'state';
 import { initSettingsController, updateThresholdSettingsUI, updateMinSizeUI, syncThresholdSettingsToState, syncNumberInputsToSliders } from 'settings-controller';
 import { initProcessingController, clearProcessingOnLoad } from 'processing-controller';
 import { initSpritesheetController, clearGeneratedSpritesheet } from 'spritesheet-controller';
 import { initViewportController, resetZoomPanStateAndView, updateImageDisplayTransform, updateOverlayContainerDimensions, clearTransforms } from 'viewport-controller';
-import { initEditingController, updateEditModeUI, resetEditingOnLoad } from 'editing-controller';
+import { initEditingController, resetEditingOnLoad } from 'editing-controller';
+import { updateEditModeUI } from 'mode-controller';
 import { initDebugController, updateDebugView, updateDebugOverlays, clearOverlays } from 'debug-controller';
 import { initThemeController } from 'theme-controller';
 
 // --- Initialization ---
 export function initUI() {
-    populateElements(); 
-    initThemeController(); 
+    populateElements();
+    initThemeController();
 
     // Initialize controllers (which add their specific event listeners)
     initSettingsController();
     initProcessingController();
     initSpritesheetController();
     initViewportController();
-    initEditingController();
+    initEditingController(); 
     initDebugController();
 
     // Add event listeners managed directly by ui-controller (e.g., image upload)
     elements.imageUploadInput.addEventListener('change', handleImageUpload);
 
     // Initial UI state setup
-    clearStateBeforeLoad(); 
+    clearStateBeforeLoad();
     console.log("UI Initialized");
 }
 
@@ -38,8 +39,6 @@ async function handleImageUpload(event) {
     const file = event.target.files ? event.target.files[0] : null;
     if (!file) {
         console.warn("Image upload event triggered, but no file found.");
-        // Optionally provide user feedback here if needed, though browser usually handles this
-        // Reset the input value in case of weird states
         if (elements.imageUploadInput) elements.imageUploadInput.value = '';
         return; // Exit if no file
     }
@@ -47,7 +46,7 @@ async function handleImageUpload(event) {
     // --- Now clear state and update UI for loading ---
     clearStateBeforeLoad();
     elements.processingStatusDiv.textContent = 'Loading image...';
-    disableAllControls(true); 
+    disableAllControls(true);
 
     try {
         // --- Pass the file object, not the input element ---
@@ -58,15 +57,15 @@ async function handleImageUpload(event) {
             throw new Error("Could not get image pixel data after loading.");
         }
 
-        setOriginalImage(imageInfo, imageData); 
+        setOriginalImage(imageInfo, imageData);
 
-        resetZoomPanStateAndView(); 
-        updateOverlayContainerDimensions(); 
+        resetZoomPanStateAndView();
+        updateOverlayContainerDimensions();
         updateDebugView(); 
 
         elements.processingStatusDiv.textContent = 'Image loaded. Adjust settings and click "Detect Sprites".';
         syncThresholdSettingsToState(); 
-        syncNumberInputsToSliders(); 
+        syncNumberInputsToSliders();
         updateMinSizeUI(); 
         disableAllControls(false); 
         elements.editingToolsSection.style.display = 'none'; 
@@ -80,8 +79,6 @@ async function handleImageUpload(event) {
         clearStateBeforeLoad(); 
     } finally {
         // --- Clear the input value AFTER processing is done (or failed) ---
-        // This prevents issues if the user selects the same file again,
-        // ensuring the 'change' event fires.
         if (elements.imageUploadInput) elements.imageUploadInput.value = '';
     }
 }
@@ -107,17 +104,16 @@ export function disableAllControls(disabled) {
     // Processing Button
     elements.processButton.disabled = processing || !imageLoaded;
 
-    // Editing Section Buttons (specific states handled by editing-controller)
-    // General disabling during processing or if no image
-    elements.editModeButtons.forEach(button => button.disabled = processing || !imageLoaded || button.dataset.mode === 'split' || button.dataset.mode === 'merge');
-    // Specific enable/disable logic for edit/delete buttons is in updateEditModeUI
+    // Editing Section Buttons are handled by updateEditModeUI based on state
+    // We just need to call it to ensure consistency
+    updateEditModeUI();
 
     // Spritesheet Section
     elements.generateSpritesheetButton.disabled = processing || !imageLoaded || !appState.detectedBlobs || appState.detectedBlobs.length === 0;
     elements.gridColsInput.disabled = processing || !imageLoaded || !appState.detectedBlobs || appState.detectedBlobs.length === 0;
     elements.paddingInput.disabled = processing || !imageLoaded || !appState.detectedBlobs || appState.detectedBlobs.length === 0;
     elements.alignmentSelect.disabled = processing || !imageLoaded || !appState.detectedBlobs || appState.detectedBlobs.length === 0;
-    // Download button disable logic is more complex (depends on generation)
+    // Download button state
     elements.downloadSpritesheetButton.disabled = processing || !imageLoaded || !appState.generatedSpritesheetCanvas;
 
     // Zoom Buttons
@@ -129,13 +125,13 @@ export function disableAllControls(disabled) {
 
     // Update dynamic UI states that depend on enabled/disabled status
     updateThresholdSettingsUI(); 
-    updateEditModeUI(); 
+    // updateEditModeUI() is already called above
 }
 
 // Clears everything including the loaded image and resets UI fully
 function clearStateBeforeLoad() {
     console.log("Clearing full state and UI before load.");
-    clearFullAppState(); 
+    clearFullAppState();
 
     // Reset UI elements specifically
     if (elements.imagePreviewCanvas) {
@@ -144,20 +140,20 @@ function clearStateBeforeLoad() {
         elements.imagePreviewCanvas.width = 1;
         elements.imagePreviewCanvas.height = 1;
     }
-    clearTransforms(); 
-    clearOverlays(elements.debugOverlaysContainer); 
+    clearTransforms();
+    clearOverlays(elements.debugOverlaysContainer);
 
     // Reset settings UI to defaults
-    resetThresholdSettings(); 
-    syncThresholdSettingsToState(); 
-    if(elements.minSizeSlider) elements.minSizeSlider.value = 10; 
-    syncNumberInputsToSliders(); 
+    resetThresholdSettings();
+    syncThresholdSettingsToState();
+    if(elements.minSizeSlider) elements.minSizeSlider.value = 10;
+    syncNumberInputsToSliders();
     updateMinSizeUI();
 
     // Reset other UI areas
-    clearProcessingOnLoad(); 
+    clearProcessingOnLoad();
     resetEditingOnLoad(); 
-    clearGeneratedSpritesheet(); 
+    clearGeneratedSpritesheet();
 
     elements.processingStatusDiv.textContent = 'Upload an image and adjust settings to start.';
     // DO NOT clear file input value here - it's handled in handleImageUpload now
@@ -166,6 +162,7 @@ function clearStateBeforeLoad() {
     elements.debugViewCheckboxes.forEach(cb => cb.checked = false);
     elements.debugOverlayCheckboxes.forEach(cb => cb.checked = false);
 
-    disableAllControls(true); 
-    elements.imageUploadInput.disabled = false; 
+    // Disable controls initially, except upload
+    disableAllControls(true);
+    elements.imageUploadInput.disabled = false;
 }
