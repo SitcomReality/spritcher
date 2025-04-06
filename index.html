@@ -156,26 +156,44 @@
                     <input type="number" id="grid-cols-input" min="1" value="8" title="Number of sprites per row in the final sheet">
                 </div>
                 <div class="setting">
-                    <label for="padding-input">Padding:</label>
-                    <input type="number" id="padding-input" min="0" value="2" title="Space (in pixels) around each sprite in the sheet">
+                    <label for="padding-input">Sprite Padding:</label>
+                    <input type="number" id="padding-input" min="0" value="2" title="Space (in pixels) around each sprite *within* its cell">
                     <span class="setting-hint">(px)</span>
                 </div>
+                <!-- NEW Cell Size Inputs -->
+                 <div class="setting">
+                    <label for="cell-width-input">Cell Width:</label>
+                    <input type="number" id="cell-width-input" min="1" placeholder="Auto" title="Width of each grid cell (pixels). Leave empty for automatic sizing based on largest sprite + padding.">
+                    <button id="use-recommended-size-btn" class="small-btn" title="Set Cell Width/Height based on largest selected sprite + padding">Use Recommended</button>
+                    <span class="setting-hint">(px)</span>
+                </div>
+                 <div class="setting">
+                    <label for="cell-height-input">Cell Height:</label>
+                    <input type="number" id="cell-height-input" min="1" placeholder="Auto" title="Height of each grid cell (pixels). Leave empty for automatic sizing.">
+                     <span class="setting-hint">(px)</span>
+                </div>
+                 <div class="setting-hint" style="margin-left: 190px;">(Leave Cell Width/Height empty to auto-size based on largest selected sprite and padding.)</div>
+                <!-- END NEW Cell Size Inputs -->
+
                 <div class="setting">
                     <label for="align-h-select">Horizontal Align:</label>
-                    <select id="align-h-select" title="How sprites align horizontally within their grid cell if sizes vary">
+                    <select id="align-h-select" title="How sprites align horizontally within their cell's content area if smaller">
                         <option value="left">Left</option>
                         <option value="center" selected>Center</option>
                         <option value="right">Right</option>
                     </select>
+                     <span class="setting-hint">(Sprite within cell)</span>
                 </div>
                 <div class="setting">
                     <label for="align-v-select">Vertical Align:</label>
-                    <select id="align-v-select" title="How sprites align vertically within their grid cell if sizes vary">
+                    <select id="align-v-select" title="How sprites align vertically within their cell's content area if smaller">
                         <option value="top">Top</option>
                         <option value="center" selected>Center</option>
                         <option value="bottom">Bottom</option>
                     </select>
+                     <span class="setting-hint">(Sprite within cell)</span>
                 </div>
+                 <div class="setting-hint" style="margin-left: 190px;">(Sprites larger than the cell content area will be scaled down to fit.)</div>
             </fieldset>
 
             <button id="generate-spritesheet-button" title="Arrange the detected (and edited) sprites into a grid">Generate Spritesheet</button>

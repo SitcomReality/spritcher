@@ -9,7 +9,7 @@ import { initEditingController, resetEditingOnLoad } from 'editing-controller';
 import { updateEditModeUI } from 'mode-controller';
 import { initDebugController, updateDebugView, updateDebugOverlays, clearOverlays } from 'debug-controller';
 import { initThemeController } from 'theme-controller';
-import { initExtractedSpritesController, clearExtractedSpritesDisplay, displayExtractedSprites, updateButtonStates as updateExtractedSpritesButtons } from 'extracted-sprites-controller';
+import { initExtractedSpritesController, clearExtractedSpritesDisplay, displayExtractedSprites, updateButtonStates as updateExtractedSpritesButtons, updateSpriteStats } from 'extracted-sprites-controller';
 
 // --- Initialization ---
 export function initUI() {
@@ -29,7 +29,7 @@ export function initUI() {
     elements.imageUploadInput.addEventListener('change', handleImageUpload);
 
     // Initial UI state setup
-    clearUIBeforeFirstLoad(); 
+    clearUIBeforeFirstLoad();
     console.log("UI Initialized");
 }
 
@@ -47,7 +47,7 @@ async function handleImageUpload(event) {
     // --- Clear state related to the *previous* image, but preserve selections ---
     clearStateForNewImageLoad();
     elements.processingStatusDiv.textContent = 'Loading image...';
-    disableAllControls(true); 
+    disableAllControls(true);
 
     try {
         const imageInfo = await loadImageFromFile(file, elements.imagePreviewCanvas);
@@ -62,26 +62,26 @@ async function handleImageUpload(event) {
 
         resetZoomPanStateAndView();
         updateOverlayContainerDimensions();
-        updateDebugView(); 
+        updateDebugView();
 
         elements.processingStatusDiv.textContent = 'Image loaded. Adjust settings and click "Detect Sprites".';
         syncThresholdSettingsToState();
         syncNumberInputsToSliders();
         updateMinSizeUI();
-        disableAllControls(false); 
-        elements.editingToolsSection.style.display = 'none'; 
-        elements.extractedSpritesSection.style.display = 'none'; 
+        disableAllControls(false); // Enable controls based on new state
+        elements.editingToolsSection.style.display = 'none';
+        elements.extractedSpritesSection.style.display = 'none';
 
         // Don't clear generated spritesheet here, allow generating with mixed sprites
         // Clear and potentially re-render extracted sprites panels
-        clearExtractedSpritesDisplay(); 
+        clearExtractedSpritesDisplay(); // Will clear available, show selected if any
 
         console.log("Image loaded successfully.");
     } catch (error) {
         elements.processingStatusDiv.textContent = `Error: ${error.message}`;
         console.error("Image loading failed:", error);
         alert(`Error loading image: ${error.message}`);
-        disableAllControls(false); 
+        disableAllControls(false); // Re-enable controls on error
         // Maybe call clearStateForNewImageLoad again to ensure clean state?
     } finally {
         if (elements.imageUploadInput) elements.imageUploadInput.value = '';
@@ -93,8 +93,9 @@ async function handleImageUpload(event) {
 // Disables/enables controls based on current app state
 export function disableAllControls(disabled) {
     const imageLoaded = !!appState.originalImageInfo;
-    const spritesSelected = appState.selectedSpritesForSheet.length > 0;
-    const processing = disabled; 
+    const spritesDetected = appState.detectedBlobs.length > 0; // Sprites detected in current image
+    const spritesSelected = appState.selectedSpritesForSheet.length > 0; // Any sprites selected (total)
+    const processing = disabled; // Explicitly disabling during processing steps
 
     // Settings Section (depends on having an image loaded)
     elements.thresholdTypeSelect.disabled = processing || !imageLoaded;
@@ -120,6 +121,9 @@ export function disableAllControls(disabled) {
     elements.generateSpritesheetButton.disabled = processing || !spritesSelected;
     elements.gridColsInput.disabled = processing || !spritesSelected;
     elements.paddingInput.disabled = processing || !spritesSelected;
+    elements.cellWidthInput.disabled = processing || !spritesSelected; // New
+    elements.cellHeightInput.disabled = processing || !spritesSelected; // New
+    elements.useRecommendedSizeButton.disabled = processing || !spritesSelected; // New
     elements.alignHSelect.disabled = processing || !spritesSelected;
     elements.alignVSelect.disabled = processing || !spritesSelected;
     // Download button depends on generated canvas existing
@@ -133,7 +137,7 @@ export function disableAllControls(disabled) {
     elements.imageUploadInput.disabled = processing;
 
     // Update dynamic UI states that depend on enabled/disabled status
-    updateThresholdSettingsUI(); 
+    updateThresholdSettingsUI();
     // updateEditModeUI() is called above
     // updateExtractedSpritesButtons() is called above
 }
@@ -155,22 +159,21 @@ function clearStateForNewImageLoad() {
     clearTransforms();
     clearOverlays(elements.debugOverlaysContainer);
     // Clear extracted sprites panels (available will be empty, selected will persist if populated)
-    clearExtractedSpritesDisplay();
+    clearExtractedSpritesDisplay(); // Will update counts/stats too
 
     // Reset settings UI to defaults (user might want different settings for new image)
     // Optionally keep settings? For now, reset.
     resetThresholdSettings();
     syncThresholdSettingsToState();
-    if(elements.minSizeSlider) elements.minSizeSlider.value = 10; 
+    if(elements.minSizeSlider) elements.minSizeSlider.value = 10;
     syncNumberInputsToSliders();
     updateMinSizeUI();
 
     // Reset other UI areas
-    resetEditingOnLoad(); 
-    clearGeneratedSpritesheet(); // Also clears spritesheet settings UI state
-    if (elements.selectedSpritesStatsDiv) { 
-        elements.selectedSpritesStatsDiv.innerHTML = "<p>Select sprites to see size information.</p>";
-    }
+    resetEditingOnLoad();
+    // Don't clear generated spritesheet automatically on new image load
+    // clearGeneratedSpritesheet();
+    // updateSpriteStats(); // Called by clearExtractedSpritesDisplay
 
     elements.processingStatusDiv.textContent = 'Loading new image...';
 
@@ -180,7 +183,7 @@ function clearStateForNewImageLoad() {
 
     // Hide sections that depend on processing results for the *new* image
     elements.editingToolsSection.style.display = 'none';
-    elements.extractedSpritesSection.style.display = 'none';
+    elements.extractedSpritesSection.style.display = 'none'; // Hide until detection
 
     // Controls will be disabled/enabled by handleImageUpload
 }
@@ -189,7 +192,7 @@ function clearStateForNewImageLoad() {
 // Clears absolutely everything - for the very first page load.
 function clearUIBeforeFirstLoad() {
     console.log("Clearing full state and UI before first load.");
-    clearFullAppState(); 
+    clearFullAppState();
 
     // Reset UI elements specifically
     if (elements.imagePreviewCanvas) {
@@ -200,7 +203,7 @@ function clearUIBeforeFirstLoad() {
     }
     clearTransforms();
     clearOverlays(elements.debugOverlaysContainer);
-    clearExtractedSpritesDisplay(); 
+    clearExtractedSpritesDisplay();
 
     // Reset settings UI to defaults
     resetThresholdSettings();
@@ -213,9 +216,8 @@ function clearUIBeforeFirstLoad() {
     clearProcessingOnLoad();
     resetEditingOnLoad();
     clearGeneratedSpritesheet(); // Also clears spritesheet settings UI state
-    if (elements.selectedSpritesStatsDiv) { 
-        elements.selectedSpritesStatsDiv.innerHTML = "<p>Upload an image and select sprites to see size information.</p>";
-    }
+    updateSpriteStats(); // Update stats display
+
 
     elements.processingStatusDiv.textContent = 'Upload an image to start.';
 
@@ -230,5 +232,5 @@ function clearUIBeforeFirstLoad() {
     // Disable controls initially, except upload
     disableAllControls(true);
     elements.imageUploadInput.disabled = false;
-    updateExtractedSpritesButtons(); 
+    updateExtractedSpritesButtons();
 }

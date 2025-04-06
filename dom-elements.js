@@ -26,6 +26,9 @@ export const elements = {
     processingStatusDiv: null,
     gridColsInput: null,
     paddingInput: null,
+    cellWidthInput: null, // Added
+    cellHeightInput: null, // Added
+    useRecommendedSizeButton: null, // Added
     alignHSelect: null, // Added
     alignVSelect: null, // Added
     generateSpritesheetButton: null,
@@ -43,7 +46,7 @@ export const elements = {
     // Extracted Sprites Section NEW/Renamed
     availableSpritesDisplayContainer: null,
     availableSpritesCountSpan: null,
-    addAllAvailableButton: null, 
+    addAllAvailableButton: null,
     selectedSpritesDisplayContainer: null,
     selectedSpritesCountSpan: null,
     removeAllSelectedButton: null,
@@ -77,6 +80,9 @@ export function populateElements() {
     elements.processingStatusDiv = document.getElementById('processing-status');
     elements.gridColsInput = document.getElementById('grid-cols-input');
     elements.paddingInput = document.getElementById('padding-input');
+    elements.cellWidthInput = document.getElementById('cell-width-input'); // Added
+    elements.cellHeightInput = document.getElementById('cell-height-input'); // Added
+    elements.useRecommendedSizeButton = document.getElementById('use-recommended-size-btn'); // Added
     elements.alignHSelect = document.getElementById('align-h-select');
     elements.alignVSelect = document.getElementById('align-v-select');
     elements.generateSpritesheetButton = document.getElementById('generate-spritesheet-button');
@@ -95,25 +101,26 @@ export function populateElements() {
     // Extracted Sprites Section NEW/Renamed
     elements.availableSpritesDisplayContainer = document.getElementById('available-sprites-display');
     elements.availableSpritesCountSpan = document.getElementById('available-sprites-count');
-    elements.addAllAvailableButton = document.getElementById('add-all-available-btn'); 
+    elements.addAllAvailableButton = document.getElementById('add-all-available-btn');
     elements.selectedSpritesDisplayContainer = document.getElementById('selected-sprites-display');
-    elements.selectedSpritesCountSpan = document.getElementById('selected-sprites-count'); 
-    elements.removeAllSelectedButton = document.getElementById('remove-all-selected-btn'); 
-    elements.selectedSpritesStatsDiv = document.getElementById('selected-sprites-stats'); 
+    elements.selectedSpritesCountSpan = document.getElementById('selected-sprites-count');
+    elements.removeAllSelectedButton = document.getElementById('remove-all-selected-btn');
+    elements.selectedSpritesStatsDiv = document.getElementById('selected-sprites-stats');
 
     // Validation
     for (const key in elements) {
         const isCollection = key.endsWith('Buttons') || key.endsWith('Checkboxes');
-        if (elements[key] === null && !isCollection) {
-            if (document.getElementById(key.replace(/([A-Z])/g, '-$1').toLowerCase()) || document.querySelector(`#${key.replace(/([A-Z])/g, '-$1').toLowerCase()}`)) {
-                console.warn(`DOM element reference is null for key: ${key}`);
-            } else {
-            }
-
-        } else if (isCollection && elements[key] instanceof NodeList && elements[key].length === 0) {
+        // Adjusted check to allow null collections (querySelectorAll might return empty)
+        if (elements[key] === null && !isCollection && !key.includes('Button') && !key.includes('Input') && !key.includes('Select') && !key.endsWith('Div')) {
+            // Only warn for critical elements that are definitely expected
+             if (document.getElementById(key.replace(/([A-Z])/g, '-$1').toLowerCase()) || document.querySelector(`#${key.replace(/([A-Z])/g, '-$1').toLowerCase()}`)) {
+                 console.warn(`DOM element reference is null for key: ${key}. Element might exist but ID/Selector mismatch?`);
+             } else {
+                 // Don't warn if the element truly isn't found (might be conditional UI)
+             }
         } else if (isCollection && !(elements[key] instanceof NodeList)) {
             console.warn(`Expected NodeList but got different type for key: ${key}`, elements[key]);
         }
     }
-    console.log("DOM elements populated (with split sprite sections).");
+    console.log("DOM elements populated (with cell size inputs).");
 }

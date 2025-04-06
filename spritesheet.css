@@ -2,13 +2,13 @@
 #spritesheet-preview-container {
     margin-top: 15px;
     border: 1px solid var(--border-secondary);
-    min-height: 100px; 
-    max-height: 450px; 
+    min-height: 100px;
+    max-height: 450px;
     background-color: var(--bg-interactive);
-    overflow: auto; 
+    overflow: auto;
     width: 100%;
-    border-radius: 4px; 
-    padding: 10px; 
+    border-radius: 4px;
+    padding: 10px;
     box-sizing: border-box;
     transition: background-color 0.3s ease, border-color 0.3s ease;
 }
@@ -25,7 +25,7 @@
 
 /* Ensure settings section aligns items nicely */
 #spritesheet-section .setting {
-    align-items: baseline; /* Align labels and inputs */
+    align-items: center; /* Changed to center for better alignment with hints */
 }
 
 #spritesheet-section .setting label {
@@ -37,7 +37,7 @@
 #spritesheet-section fieldset {
     display: flex;
     flex-direction: column;
-    gap: 10px; /* Spacing between rows */
+    gap: 12px; /* Increased gap slightly */
 }
 
 #spritesheet-section .setting input[type="number"],
@@ -45,4 +45,16 @@
     width: 100px; /* Consistent width for number/select inputs */
     flex-grow: 0;
     flex-shrink: 0;
+}
+
+/* Adjust specific inputs if needed */
+#cell-width-input, #cell-height-input {
+    width: 80px; /* Slightly smaller for cell size */
+}
+
+#use-recommended-size-btn {
+    margin-left: -5px; /* Adjust spacing */
+    margin-right: 0;
+    padding: 6px 10px; /* Smaller padding */
+    font-size: 0.85em; /* Smaller font */
 }

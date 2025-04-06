@@ -1,24 +1,47 @@
 import { elements } from 'dom-elements';
 import { appState, setGeneratedSpritesheet, clearGeneratedSpritesheetState } from 'state';
-import { generateSpritesheet, downloadCanvasAsPNG } from 'spritesheet-generator';
+import { generateSpritesheet, downloadCanvasAsPNG, calculateRecommendedLayout } from 'spritesheet-generator';
 import { disableAllControls } from 'ui-controller';
-import { updateSpriteStats } from 'extracted-sprites-controller'; 
+import { updateSpriteStats } from 'extracted-sprites-controller';
 
 export function initSpritesheetController() {
     elements.gridColsInput.addEventListener('change', handleSpritesheetSettingsChange);
     elements.paddingInput.addEventListener('change', handleSpritesheetSettingsChange);
-    elements.alignHSelect.addEventListener('change', handleSpritesheetSettingsChange); 
-    elements.alignVSelect.addEventListener('change', handleSpritesheetSettingsChange); 
+    elements.cellWidthInput?.addEventListener('input', handleSpritesheetSettingsChange);
+    elements.cellHeightInput?.addEventListener('input', handleSpritesheetSettingsChange);
+    elements.useRecommendedSizeButton?.addEventListener('click', handleUseRecommendedSize);
+    elements.alignHSelect.addEventListener('change', handleSpritesheetSettingsChange);
+    elements.alignVSelect.addEventListener('change', handleSpritesheetSettingsChange);
     elements.generateSpritesheetButton.addEventListener('click', handleGenerateSpritesheet);
     elements.downloadSpritesheetButton.addEventListener('click', handleDownloadSpritesheet);
 }
 
 // Handles changes to spritesheet layout settings
 function handleSpritesheetSettingsChange() {
-    clearGeneratedSpritesheet(); // Clear only the generated sheet, not selection
+    clearGeneratedSpritesheetPreview();
     elements.processingStatusDiv.textContent = "Spritesheet layout settings changed. Click 'Generate Spritesheet' to update.";
-    // Re-enable generate button if sprites are selected
-     elements.generateSpritesheetButton.disabled = appState.selectedSpritesForSheet.length === 0;
+    elements.generateSpritesheetButton.disabled = appState.selectedSpritesForSheet.length === 0;
+    updateSpriteStats();
+}
+
+// Handles click on "Use Recommended Size" button
+function handleUseRecommendedSize() {
+    const selectedSprites = appState.selectedSpritesForSheet;
+    if (selectedSprites.length === 0) {
+        alert("Please select some sprites first to calculate recommended size.");
+        return;
+    }
+    const padding = parseInt(elements.paddingInput.value, 10) || 0;
+    const layout = calculateRecommendedLayout(selectedSprites, padding);
+
+    if (layout && elements.cellWidthInput && elements.cellHeightInput) {
+        elements.cellWidthInput.value = layout.recommendedCellWidth;
+        elements.cellHeightInput.value = layout.recommendedCellHeight;
+        console.log(`Set cell size inputs to recommended: ${layout.recommendedCellWidth}x${layout.recommendedCellHeight}`);
+        handleSpritesheetSettingsChange();
+    } else {
+        console.warn("Could not calculate or apply recommended size.");
+    }
 }
 
 // Generates and displays the spritesheet using selected sprites
@@ -30,7 +53,6 @@ async function handleGenerateSpritesheet() {
         return;
     }
 
-    // Check if all selected sprites have valid sourceImageData
     const missingData = spritesToInclude.some(s => !s.sourceImageData);
     if (missingData) {
         alert("Error: Some selected sprites are missing their source image data. Cannot generate spritesheet.");
@@ -38,38 +60,35 @@ async function handleGenerateSpritesheet() {
         return;
     }
 
-
     console.log(`Generating spritesheet with ${spritesToInclude.length} selected sprites...`);
     elements.processingStatusDiv.textContent = 'Generating spritesheet...';
     disableAllControls(true);
 
     const cols = parseInt(elements.gridColsInput.value, 10) || 8;
     const padding = parseInt(elements.paddingInput.value, 10) || 0;
-    const alignH = elements.alignHSelect.value; 
-    const alignV = elements.alignVSelect.value; 
+    const alignH = elements.alignHSelect.value;
+    const alignV = elements.alignVSelect.value;
+    const userCellWidth = parseInt(elements.cellWidthInput?.value, 10);
+    const userCellHeight = parseInt(elements.cellHeightInput?.value, 10);
+    const finalUserCellWidth = (userCellWidth && userCellWidth > 0) ? userCellWidth : null;
+    const finalUserCellHeight = (userCellHeight && userCellHeight > 0) ? userCellHeight : null;
 
     try {
-        // Pass the list of selected sprite objects, including their source data
         const resultCanvas = await generateSpritesheet(
             spritesToInclude,
             cols,
             padding,
-            alignH, 
-            alignV 
+            alignH,
+            alignV,
+            finalUserCellWidth,
+            finalUserCellHeight
         );
 
-        setGeneratedSpritesheet(resultCanvas); // Store in state
-
-        // Display in preview canvas
-        const previewCtx = elements.spritesheetPreviewCanvas.getContext('2d');
-        elements.spritesheetPreviewCanvas.width = resultCanvas.width;
-        elements.spritesheetPreviewCanvas.height = resultCanvas.height;
-        previewCtx.clearRect(0, 0, resultCanvas.width, resultCanvas.height);
-        previewCtx.drawImage(resultCanvas, 0, 0);
+        setGeneratedSpritesheet(resultCanvas);
+        displayGeneratedSpritesheetPreview(resultCanvas);
 
         elements.processingStatusDiv.textContent = `Spritesheet generated (${spritesToInclude.length} sprites). Ready to download.`;
         elements.downloadSpritesheetButton.disabled = false;
-        // Ensure stats are up-to-date (though they shouldn't change on generate)
         updateSpriteStats();
         console.log("Spritesheet generation and preview complete.");
 
@@ -77,7 +96,7 @@ async function handleGenerateSpritesheet() {
         console.error("Spritesheet generation failed:", error);
         elements.processingStatusDiv.textContent = `Error generating spritesheet: ${error.message}`;
         alert(`Error generating spritesheet: ${error.message}`);
-        clearGeneratedSpritesheet(); // Clear state and UI
+        clearGeneratedSpritesheet();
     } finally {
         disableAllControls(false);
     }
@@ -91,42 +110,52 @@ function handleDownloadSpritesheet() {
     }
     console.log("Preparing spritesheet download...");
     let filename = 'spritcher_spritesheet.png';
-    // Try to derive name from the first selected sprite's source ID?
     if (appState.selectedSpritesForSheet.length > 0) {
-         const firstSourceId = appState.selectedSpritesForSheet[0].sourceImageId;
-         // Attempt to extract original filename part
-         const nameParts = firstSourceId.split('-');
-         if (nameParts.length > 2) { // Check if it looks like our generated ID format
-             const originalName = nameParts.slice(0, -2).join('-'); // Rejoin potentially hyphenated names
-             const baseName = originalName.substring(0, originalName.lastIndexOf('.')) || originalName;
-             if (baseName && baseName !== 'unknown') {
-                 filename = `${baseName}_spritesheet.png`;
-             }
-         }
+        const firstSourceId = appState.selectedSpritesForSheet[0].sourceImageId;
+        const nameParts = firstSourceId.split('-');
+        if (nameParts.length > 2) {
+            const originalName = nameParts.slice(0, -2).join('-');
+            const baseName = originalName.substring(0, originalName.lastIndexOf('.')) || originalName;
+            if (baseName && baseName !== 'unknown') {
+                filename = `${baseName}_spritesheet.png`;
+            }
+        }
     }
-
 
     downloadCanvasAsPNG(appState.generatedSpritesheetCanvas, filename);
 }
 
-// Clears the generated spritesheet state and UI
-export function clearGeneratedSpritesheet() {
-    clearGeneratedSpritesheetState(); // Clear state
+// Displays the generated spritesheet canvas in the preview area
+function displayGeneratedSpritesheetPreview(canvas) {
+    if (elements.spritesheetPreviewCanvas && canvas) {
+        const previewCtx = elements.spritesheetPreviewCanvas.getContext('2d');
+        elements.spritesheetPreviewCanvas.width = canvas.width;
+        elements.spritesheetPreviewCanvas.height = canvas.height;
+        previewCtx.clearRect(0, 0, canvas.width, canvas.height);
+        previewCtx.drawImage(canvas, 0, 0);
+    }
+}
+
+// Clears only the spritesheet preview canvas and disables download button
+function clearGeneratedSpritesheetPreview() {
     if (elements.spritesheetPreviewCanvas) {
         const ctx = elements.spritesheetPreviewCanvas.getContext('2d');
         const w = elements.spritesheetPreviewCanvas.width || 1;
         const h = elements.spritesheetPreviewCanvas.height || 1;
-        elements.spritesheetPreviewCanvas.width = w;
-        elements.spritesheetPreviewCanvas.height = h;
         ctx.clearRect(0, 0, w, h);
-        elements.spritesheetPreviewCanvas.width = 1;
-        elements.spritesheetPreviewCanvas.height = 1;
     }
-    if(elements.downloadSpritesheetButton) elements.downloadSpritesheetButton.disabled = true;
-    // Reset spritesheet settings UI
+    if (elements.downloadSpritesheetButton) elements.downloadSpritesheetButton.disabled = true;
+}
+
+// Clears the generated spritesheet state AND UI completely
+export function clearGeneratedSpritesheet() {
+    clearGeneratedSpritesheetState();
+    clearGeneratedSpritesheetPreview();
     if (elements.gridColsInput) elements.gridColsInput.value = 8;
     if (elements.paddingInput) elements.paddingInput.value = 2;
+    if (elements.cellWidthInput) elements.cellWidthInput.value = '';
+    if (elements.cellHeightInput) elements.cellHeightInput.value = '';
     if (elements.alignHSelect) elements.alignHSelect.value = 'center';
     if (elements.alignVSelect) elements.alignVSelect.value = 'center';
-    console.log("Spritesheet cleared.");
+    console.log("Spritesheet state and UI cleared.");
 }
