@@ -174,3 +174,34 @@ export function deleteBlobByIndex(index) {
 
     return true;
 }
+
+/**
+ * Updates the bounds of a detected blob by its index.
+ * Performs basic validation on the new bounds.
+ * @param {number} index - The index of the blob to update.
+ * @param {{ minX: number, minY: number, width: number, height: number }} newBounds - The new bounds.
+ * @returns {boolean} True if the update was successful, false otherwise.
+ */
+export function updateBlobBoundsByIndex(index, newBounds) {
+     if (index === null || index < 0 || index >= appState.detectedBlobs.length) {
+        console.warn(`Attempted to update bounds for invalid blob index: ${index}`);
+        return false;
+    }
+     if (!newBounds || newBounds.width <= 0 || newBounds.height <= 0 ||
+         newBounds.minX === undefined || newBounds.minY === undefined) {
+         console.warn(`Attempted to update blob ${index} with invalid bounds:`, newBounds);
+         return false;
+     }
+
+     // Update the specific blob's bounds object
+     const blob = appState.detectedBlobs[index];
+     blob.bounds.minX = Math.round(newBounds.minX); // Store as integers
+     blob.bounds.minY = Math.round(newBounds.minY);
+     blob.bounds.width = Math.round(newBounds.width);
+     blob.bounds.height = Math.round(newBounds.height);
+     blob.bounds.maxX = blob.bounds.minX + blob.bounds.width - 1; // Update derived maxX/maxY
+     blob.bounds.maxY = blob.bounds.minY + blob.bounds.height - 1;
+
+     console.log(`Updated bounds for blob ${index}:`, blob.bounds);
+     return true;
+}

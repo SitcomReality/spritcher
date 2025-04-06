@@ -112,16 +112,14 @@ export function updateDebugOverlays() {
         drawBoundingBoxes(elements.debugOverlaysContainer, appState.detectedBlobs.map(b => b.bounds), {
             className: 'editable-bbox',
             color: 'blue',
-            pointerEvents: 'auto', // Make them interactive for selection
+            pointerEvents: 'auto', // Make them interactive for selection/editing
             borderWidth: 2,
             dataAttributes: {
                 blobIndex: (box, index) => index // Add index for click identification
             }
         });
-        // Re-apply selection highlight (handled within editing-controller now)
-        // Find the highlightSelectedBlob equivalent call if needed here, maybe from editing controller
-        // For now, selection state is managed there, drawing happens here. Highlight applied via class.
-        highlightSelectedOverlay(); // Call helper to apply class based on state
+        // Apply selection highlight and potentially add resize handles
+        updateSelectionAndHandles();
     } else {
         console.log("Editable bounding box overlay not shown (checkbox off or no blobs).");
     }
@@ -129,16 +127,36 @@ export function updateDebugOverlays() {
 }
 
 
-// Helper function to apply the 'selected' class based on current state
-// This is needed because updateDebugOverlays redraws the boxes, losing the class.
-function highlightSelectedOverlay() {
+// Helper function to apply the 'selected' class and add/remove resize handles
+function updateSelectionAndHandles() {
      const selectedIndex = appState.editing.selectedBlobIndex;
-     if (selectedIndex !== null) {
-         const box = elements.debugOverlaysContainer.querySelector(`.editable-bbox[data-blob-index="${selectedIndex}"]`);
-         if (box) {
-             box.classList.add('selected');
+     const isEditingBounds = appState.editing.currentEditMode === 'edit-bounds';
+
+     // Clear previous handles first
+     elements.debugOverlaysContainer.querySelectorAll('.resize-handle').forEach(h => h.remove());
+
+     elements.debugOverlaysContainer.querySelectorAll('.editable-bbox').forEach((box, index) => {
+         const isSelected = index === selectedIndex;
+         box.classList.toggle('selected', isSelected);
+
+         // Add handles if selected AND in edit-bounds mode
+         if (isSelected && isEditingBounds) {
+             addResizeHandles(box);
          }
-     }
+     });
+}
+
+
+// Adds the 8 resize handles to a given bounding box div
+function addResizeHandles(boxDiv) {
+    const handleTypes = ['nw', 'n', 'ne', 'w', 'e', 'sw', 's', 'se'];
+    handleTypes.forEach(type => {
+        const handle = document.createElement('div');
+        handle.className = `resize-handle ${type}`;
+        handle.dataset.handleType = type;
+        // Handles are positioned relative to the boxDiv using CSS % offsets
+        boxDiv.appendChild(handle);
+    });
 }
 
 
@@ -146,5 +164,6 @@ function highlightSelectedOverlay() {
 export function clearOverlays(container) {
     if (container) {
         clearOverlaysUtil(container); // Use the utility function
+        // Handles are children of boxes or container, clearOverlaysUtil should get them
     }
 }

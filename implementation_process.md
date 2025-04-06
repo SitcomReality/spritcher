@@ -2,19 +2,18 @@
 *   **Image Loading and Zoom/Pan:** (Complete)
 *   **Image Processing Implementation (Grayscale, Thresholding):** (Complete)
 *   **Blob Detection Implementation (CCL):** (Complete)
-*   **Visual Debugging Tools (Views & Overlays):** (Complete - Basic views and bounding box overlays implemented and toggleable. Pixel-level comparison not implemented.)
-*   **Spritesheet Generator Implementation (Generation & Preview):** (Complete - Generation, preview, and settings are functional.)
+*   **Visual Debugging Tools (Views & Overlays):** (Complete)
+*   **Spritesheet Generator Implementation (Generation & Preview):** (Complete)
 *   **Testing and Refinement:** (Ongoing)
-*   **Refactor UI Controller:** (Complete - Logic split into `settings-`, `processing-`, `spritesheet-`, `viewport-`, `editing-`, `debug-` controllers.)
+*   **Refactor UI Controller:** (Complete)
 *   **Implement Sprite Editing Tools:**
     *   **Selection:** (Complete)
-    *   **Deletion:** (Implementing Now)
-    *   **Boundary Editing:** (Next)
+    *   **Deletion:** (Complete)
+    *   **Boundary Editing:** (Implementing Now)
     *   **Add Box:** (Future)
     *   **Split/Merge:** (Future - Low Priority)
 *   **Palette Reduction:** (Future)
 *   **Web Worker Optimization:** (Future)
 
-**Next Step:** Implement sprite deletion functionality. Modify the existing 'Delete' button to be an action button that removes the currently selected sprite.
-
+**Next Step:** Implement adding new sprite boxes manually.
 

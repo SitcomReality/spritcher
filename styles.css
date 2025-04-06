@@ -211,6 +211,32 @@ select {
     border-color: limegreen;
     border-width: 3px;
     box-shadow: 0 0 5px rgba(0, 255, 0, 0.7);
+    z-index: 10;
+}
+
+.resize-handle {
+    position: absolute;
+    width: 10px;
+    height: 10px;
+    background-color: limegreen;
+    border: 1px solid darkgreen;
+    box-sizing: border-box;
+    transform: translate(-50%, -50%);
+    z-index: 11; 
+    pointer-events: auto; 
+}
+
+.resize-handle.nw { top: 0; left: 0; cursor: nwse-resize; }
+.resize-handle.n  { top: 0; left: 50%; cursor: ns-resize; }
+.resize-handle.ne { top: 0; left: 100%; cursor: nesw-resize; }
+.resize-handle.w  { top: 50%; left: 0; cursor: ew-resize; }
+.resize-handle.e  { top: 50%; left: 100%; cursor: ew-resize; }
+.resize-handle.sw { top: 100%; left: 0; cursor: nesw-resize; }
+.resize-handle.s  { top: 100%; left: 50%; cursor: ns-resize; }
+.resize-handle.se { top: 100%; left: 100%; cursor: nwse-resize; }
+
+.resizing {
+     cursor: crosshair; 
 }
 
 .ccl-label {
@@ -246,7 +272,7 @@ select {
 }
 
 #delete-selected-btn {
-    background-color: #dc3545; /* Red for destructive action */
+    background-color: #dc3545; 
 }
 
 #delete-selected-btn:hover:not(:disabled) {
