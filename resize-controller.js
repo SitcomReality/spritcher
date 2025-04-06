@@ -3,8 +3,7 @@ import { appState, updateBlobBoundsByIndex } from 'state';
 import { clearGeneratedSpritesheet } from 'spritesheet-controller';
 import { invalidateProcessing } from 'processing-controller';
 import { updateDebugOverlays } from 'debug-controller';
-// Import updateEditingStatus from mode-controller if needed
-import { updateEditModeUI } from 'editing-controller';
+import { updateEditModeUI } from 'mode-controller';
 
 // --- Local State for Resizing ---
 let isResizing = false;
@@ -15,11 +14,11 @@ let startBounds_resize = null;
 let selectedBoxElement_resize = null;
 
 export function initResizeController() {
-    // Listeners are added in editing-controller and call functions here
+    // Listeners are added in mode-controller and call functions here
 }
 
 export function handleMouseDownResize(event) {
-     // Called by editing-controller if mode is 'edit-bounds' and target is a handle
+     // Called by mode-controller if mode is 'edit-bounds' and target is a handle
     if (event.button !== 0 || appState.editing.currentEditMode !== 'edit-bounds') return;
 
     const selectedIndex = appState.editing.selectedBlobIndex;
@@ -51,7 +50,7 @@ export function handleMouseDownResize(event) {
 
 
 export function handleMouseMoveResize(event) {
-    // Called by editing-controller's global mousemove if isResizing is true
+    // Called by mode-controller's global mousemove if isResizing is true
     if (!isResizing || !startBounds_resize || !selectedBoxElement_resize) return;
 
     event.preventDefault();
@@ -103,7 +102,7 @@ export function handleMouseMoveResize(event) {
 }
 
 export function handleMouseUpResize(event) {
-     // Called by editing-controller's global mouseup if isResizing is true
+     // Called by mode-controller's global mouseup if isResizing is true
     if (!isResizing) return;
     if (event.button !== 0) return; // Only react to left mouse button up
 
@@ -185,7 +184,7 @@ export function stopResizing(saveChanges) {
     selectedBoxElement_resize = null;
 
     updateDebugOverlays(); // Ensure handles are drawn correctly based on selection/mode
-    updateEditModeUI(); // Let editing-controller handle UI updates
+    updateEditModeUI(); // Let mode-controller handle UI updates
 
 }
 

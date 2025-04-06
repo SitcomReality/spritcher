@@ -3,7 +3,7 @@ import { appState, addBlob, setSelectedBlobIndex } from 'state';
 import { clearGeneratedSpritesheet } from 'spritesheet-controller';
 import { invalidateProcessing } from 'processing-controller';
 import { updateDebugOverlays } from 'debug-controller';
-import { setEditModeAndClearSelection, updateEditModeUI } from 'editing-controller';
+import { setEditModeAndClearSelection, updateEditModeUI } from 'mode-controller';
 
 // --- Local State for Adding Box ---
 let isAddingBox = false;
@@ -12,11 +12,11 @@ let startAddY_img = 0;
 let tempAddBoxElement = null;
 
 export function initAddBoxController() {
-    // Listeners are added in editing-controller and call functions here
+    // Listeners are added in mode-controller and call functions here
 }
 
 export function handleMouseDownAddBox(event) {
-    // Called by editing-controller if mode is 'add'
+    // Called by mode-controller if mode is 'add'
     if (event.button !== 0 || appState.editing.currentEditMode !== 'add') return;
 
     // Don't start adding if clicking on an existing box or handle
@@ -54,7 +54,7 @@ export function handleMouseDownAddBox(event) {
 }
 
 export function handleMouseMoveAddBox(event) {
-    // Called by editing-controller's global mousemove if isAddingBox is true
+    // Called by mode-controller's global mousemove if isAddingBox is true
     if (!isAddingBox || !tempAddBoxElement) return;
 
     const { currentZoom, panX, panY } = appState.viewport;
@@ -80,7 +80,7 @@ export function handleMouseMoveAddBox(event) {
 }
 
 export function handleMouseUpAddBox(event) {
-    // Called by editing-controller's global mouseup if isAddingBox is true
+    // Called by mode-controller's global mouseup if isAddingBox is true
     if (!isAddingBox) return;
     if (event.button !== 0) return; // Only react to left mouse button up
 

@@ -3,8 +3,7 @@ import { appState, deleteBlobByIndex } from 'state';
 import { clearGeneratedSpritesheet } from 'spritesheet-controller';
 import { invalidateProcessing } from 'processing-controller';
 import { updateDebugOverlays } from 'debug-controller';
-// Import updateEditingStatus and updateEditModeUI from mode-controller
-import { updateEditModeUI } from 'editing-controller';
+import { updateEditModeUI } from 'mode-controller';
 
 export function initDeleteController() {
     elements.deleteSelectedButton.addEventListener('click', handleDeleteSelected);

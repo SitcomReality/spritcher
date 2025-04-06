@@ -1,7 +1,7 @@
 import { elements } from 'dom-elements';
 import { appState, setSelectedBlobIndex } from 'state';
 import { updateDebugOverlays } from 'debug-controller';
-import { updateEditModeUI } from 'editing-controller'; 
+import { updateEditModeUI } from 'mode-controller'; 
 
 export function initSelectionController() {
     // Listener added in editing-controller which calls handlePreviewClick if mode is 'select'
