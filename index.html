@@ -4,9 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Spritcher - Sprite Sheet Extractor</title>
-    <!-- Remove old stylesheet -->
-    <!-- <link rel="stylesheet" href="styles.css"> -->
-    <!-- Add new modular stylesheets -->
     <link rel="stylesheet" href="variables.css">
     <link rel="stylesheet" href="base.css">
     <link rel="stylesheet" href="theme-toggle.css">
@@ -14,7 +11,8 @@
     <link rel="stylesheet" href="preview.css">
     <link rel="stylesheet" href="editing.css">
     <link rel="stylesheet" href="spritesheet.css">
-    <link rel="stylesheet" href="extracted-sprites.css"> <!-- Added -->
+    <link rel="stylesheet" href="extracted-sprites.css">
+    <link rel="stylesheet" href="help-modal.css">
 </head>
 <body>
     <button id="theme-toggle-button" class="theme-toggle" title="Toggle Light/Dark Mode">
@@ -25,6 +23,7 @@
             <path fill-rule="evenodd" d="M9.528 1.718a.75.75 0 01.162.819A8.97 8.97 0 009 6a9 9 0 009 9 8.97 8.97 0 003.463-.69a.75.75 0 01.981.98 10.503 10.503 0 01-9.694 6.46c-5.799 0-10.5-4.7-10.5-10.5 0-3.51 1.713-6.637 4.43-8.564a.75.75 0 01.819.162z" clip-rule="evenodd"/>
         </svg>
     </button>
+    <button id="help-button" class="help-btn" title="Open Help Guide">?</button>
 
     <div class="app-container">
         <h1>Spritcher <small>Sprite Sheet Extractor</small></h1>
@@ -205,6 +204,109 @@
 
     </div>
 
+    <!-- Help Dialog Modal -->
+    <dialog id="help-dialog" class="help-modal">
+        <button id="help-close-button" class="help-close-btn" title="Close Help">&times;</button>
+        <h2>Spritcher Help Guide</h2>
+        <article class="help-content">
+            <section>
+                <h3>1. Upload Image</h3>
+                <p>Click the "Choose File" button or drag and drop an image file (PNG, JPG, GIF etc.) onto the page. The image will appear in the preview area.</p>
+                <p><strong>Zoom/Pan:</strong> Use the <code>+</code> and <code>-</code> buttons or your mouse wheel to zoom in/out on the preview. Click and drag on the preview (while in Pan/Zoom mode) to move the image around.</p>
+            </section>
+
+            <section>
+                <h3>2. Detection Settings</h3>
+                <p>These settings control how Spritcher separates sprites from the background.</p>
+                <ul>
+                    <li><strong>Background Removal Method:</strong>
+                        <ul>
+                            <li><strong>Manual Threshold:</strong> Good for images with a uniform background color. Adjust the slider/number until the sprites are clearly white and the background is black in the "Show Thresholded" debug view. Lower values are more sensitive (more white).</li>
+                            <li><strong>Adaptive Threshold (Mean):</strong> Better for images with uneven lighting or gradients. It calculates the threshold locally for different parts of the image. Adjust 'Neighborhood Size' (odd numbers like 3, 5, 11...) and 'Sensitivity (C)' to fine-tune.</li>
+                        </ul>
+                    </li>
+                    <li><strong>Minimum Sprite Size:</strong> Sets the minimum pixel area for a detected shape to be considered a sprite. Increase this to ignore small noise or unwanted artifacts.</li>
+                    <li><strong>Debugging Views & Overlays:</strong>
+                        <ul>
+                            <li><strong>Show Grayscale:</strong> Displays the image converted to black and white.</li>
+                            <li><strong>Show Thresholded:</strong> Shows the black and white result of the background removal. This is crucial for tuning threshold settings. Sprites should be white, background black.</li>
+                            <li><strong>Show CCL IDs:</strong> Assigns a unique color to each distinct detected shape (blob). Useful for seeing how shapes are grouped.</li>
+                            <li><strong>Show Sprite Boxes:</strong> Draws blue boxes around the detected sprites. Enable this to use the editing tools.</li>
+                        </ul>
+                    </li>
+                </ul>
+            </section>
+
+            <section>
+                <h3>3. Detect Sprites</h3>
+                <p>Click the "Detect Sprites" button after adjusting settings. Spritcher will apply the processing steps and identify potential sprite boundaries based on your settings.</p>
+                <p>The found sprites will appear in the "Available Sprites" panel below, and blue boxes will appear on the image preview if "Show Sprite Boxes" is checked.</p>
+            </section>
+
+             <section>
+                <h3>4. Sprite Editing Tools (Requires 'Show Sprite Boxes' enabled)</h3>
+                <p>Use these tools to refine the automatically detected sprite boundaries.</p>
+                <ul>
+                    <li><strong>Pan/Zoom:</strong> (Default mode) Click and drag to pan the image, use the mouse wheel or zoom buttons to zoom.</li>
+                    <li><strong>Select:</strong> Click on a blue sprite box in the preview to select it. Selected boxes turn brighter blue. Click empty space to deselect.</li>
+                    <li><strong>Edit Bounds:</strong> First, <strong>Select</strong> a sprite. Then switch to this mode. Drag the small green handles that appear on the selected box to resize its boundaries.</li>
+                    <li><strong>Add Box:</strong> Click and drag directly on the image preview to draw a new rectangular sprite box. Useful if a sprite wasn't detected automatically.</li>
+                    <li><strong>Delete Selected:</strong> First, <strong>Select</strong> a sprite. Then click this button to remove its box entirely. This removes it from detection results and any selection lists.</li>
+                </ul>
+                <p><em>Note:</em> Editing tools only affect sprites detected in the *currently* loaded image.</p>
+            </section>
+
+            <section>
+                <h3>5. Manage Sprites for Sheet</h3>
+                <p>This section lets you choose which detected sprites (potentially from multiple uploaded images) will be included in the final spritesheet.</p>
+                <ul>
+                    <li><strong>Available Sprites:</strong> Shows previews of sprites detected in the <em>most recently processed image</em>.
+                        <ul>
+                            <li>Click a sprite preview here to add it to the 'Selected for Sheet' panel.</li>
+                            <li>Sprites already selected are dimmed.</li>
+                            <li>"Add All" adds all currently available sprites to the selection.</li>
+                        </ul>
+                    </li>
+                    <li><strong>Selected for Sheet:</strong> Shows previews of all sprites you've chosen to include in the final spritesheet (can be from different source images).
+                        <ul>
+                            <li>Click a sprite preview here to remove it from the selection.</li>
+                            <li>"Remove All" clears the entire selection.</li>
+                            <li>The stats area shows size information about the selected sprites and helps determine layout settings.</li>
+                        </ul>
+                    </li>
+                </ul>
+            </section>
+
+            <section>
+                <h3>6. Generate & Download Spritesheet</h3>
+                <p>Configure the layout of your final spritesheet using the selected sprites.</p>
+                <ul>
+                    <li><strong>Columns:</strong> How many sprites wide the sheet should be.</li>
+                    <li><strong>Sprite Padding:</strong> Empty space (in pixels) added <em>inside</em> each sprite's cell, around the sprite itself.</li>
+                    <li><strong>Cell Width / Cell Height:</strong> Defines the exact size of each grid cell.
+                        <ul>
+                            <li>Leave empty (or use "Use Recommended") to automatically size cells based on the largest selected sprite plus padding.</li>
+                            <li>Enter specific values to force a uniform cell size. Sprites larger than the content area (Cell Size - Padding) will be scaled down to fit.</li>
+                        </ul>
+                    </li>
+                     <li><strong>Horizontal/Vertical Align:</strong> How sprites are positioned within their cell's content area if they are smaller than the available space.</li>
+                </ul>
+                <p>Click "Generate Spritesheet" to create the preview based on your selected sprites and layout settings. Once generated, click "Download Spritesheet" to save it as a PNG file.</p>
+            </section>
+
+             <section>
+                <h3>Tips</h3>
+                <ul>
+                    <li>Use the "Show Thresholded" view extensively to fine-tune the threshold settings – it's the most critical step for good detection.</li>
+                    <li>If sprites are connected, try increasing the threshold value slightly (manual) or adjusting Adaptive settings.</li>
+                    <li>If parts of sprites are missing, try decreasing the threshold value (manual).</li>
+                    <li>Use the "Add Box" and "Edit Bounds" tools to manually fix detection errors.</li>
+                    <li>You can upload multiple images, detect sprites in each, and add desired sprites from each image to the "Selected for Sheet" panel before generating the final combined spritesheet.</li>
+                </ul>
+            </section>
+        </article>
+    </dialog>
+
     <script type="importmap">
     {
         "imports": {
@@ -228,7 +330,8 @@
             "delete-controller": "./delete-controller.js",
             "debug-controller": "./debug-controller.js",
             "theme-controller": "./theme-controller.js",
-            "extracted-sprites-controller": "./extracted-sprites-controller.js"
+            "extracted-sprites-controller": "./extracted-sprites-controller.js",
+            "help-controller": "./help-controller.js"
         }
     }
     </script>

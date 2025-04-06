@@ -10,6 +10,7 @@ import { updateEditModeUI } from 'mode-controller';
 import { initDebugController, updateDebugView, updateDebugOverlays, clearOverlays } from 'debug-controller';
 import { initThemeController } from 'theme-controller';
 import { initExtractedSpritesController, clearExtractedSpritesDisplay, displayExtractedSprites, updateButtonStates as updateExtractedSpritesButtons, updateSpriteStats } from 'extracted-sprites-controller';
+import { initHelpController } from 'help-controller';
 
 // --- Initialization ---
 export function initUI() {
@@ -24,6 +25,7 @@ export function initUI() {
     initEditingController();
     initDebugController();
     initExtractedSpritesController();
+    initHelpController();
 
     // Add event listeners managed directly by ui-controller (e.g., image upload)
     elements.imageUploadInput.addEventListener('change', handleImageUpload);

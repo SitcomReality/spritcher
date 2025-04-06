@@ -1,0 +1,127 @@
+/* Help Button Styles */
+.help-btn {
+    position: absolute;
+    top: 15px;
+    right: 75px; 
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background-color: var(--bg-tertiary);
+    border: 1px solid var(--border-secondary);
+    color: var(--text-secondary);
+    font-size: 1.2em;
+    font-weight: bold;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    margin: 0;
+    transition: background-color 0.3s ease, color 0.3s ease, box-shadow 0.2s ease;
+}
+
+.help-btn:hover {
+    background-color: var(--bg-interactive);
+    color: var(--text-primary);
+    box-shadow: var(--shadow-primary);
+}
+
+/* Help Modal Dialog Styles */
+.help-modal {
+    position: fixed; 
+    margin: auto; 
+    max-width: 90vw;
+    max-height: 85vh;
+    width: 800px; 
+    border: 1px solid var(--border-primary);
+    border-radius: 8px;
+    padding: 25px 30px;
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+    overflow-y: auto; 
+    z-index: 1000;
+    transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+}
+
+/* Dialog backdrop */
+.help-modal::backdrop {
+    background-color: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(3px);
+}
+
+/* Close button inside the modal */
+.help-close-btn {
+    position: absolute;
+    top: 10px;
+    right: 15px;
+    background: none;
+    border: none;
+    font-size: 1.8em;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 0 5px;
+    line-height: 1;
+    transition: color 0.2s ease;
+}
+
+.help-close-btn:hover {
+    color: var(--text-primary);
+}
+
+/* Modal Content Styling */
+.help-modal h2 {
+    margin-top: 0;
+    margin-bottom: 20px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border-secondary);
+    color: var(--text-primary);
+}
+
+.help-content section {
+    margin-bottom: 25px;
+    padding-left: 10px;
+    border-left: 3px solid var(--border-secondary);
+}
+.dark-mode .help-content section {
+     border-left: 3px solid var(--border-interactive);
+}
+
+
+.help-content h3 {
+    margin-top: 0;
+    margin-bottom: 10px;
+    color: var(--text-secondary);
+    font-size: 1.1em;
+}
+
+.help-content p,
+.help-content ul {
+    margin-bottom: 10px;
+    line-height: 1.6;
+    font-size: 0.95em;
+}
+
+.help-content ul {
+    padding-left: 25px;
+}
+
+.help-content li {
+    margin-bottom: 5px;
+}
+
+.help-content code {
+    background-color: var(--bg-secondary);
+    padding: 0.2em 0.4em;
+    border-radius: 3px;
+    font-size: 0.9em;
+    color: var(--text-link);
+}
+.dark-mode .help-content code {
+    color: #93c5fd; 
+}
+
+.help-content strong {
+    color: var(--text-secondary);
+    font-weight: 600;
+}

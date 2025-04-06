@@ -51,6 +51,10 @@ export const elements = {
     selectedSpritesCountSpan: null,
     removeAllSelectedButton: null,
     selectedSpritesStatsDiv: null, // Added
+    // Help Modal Elements (Added)
+    helpButton: null,
+    helpDialog: null,
+    helpCloseButton: null,
 };
 
 export function populateElements() {
@@ -107,17 +111,22 @@ export function populateElements() {
     elements.removeAllSelectedButton = document.getElementById('remove-all-selected-btn');
     elements.selectedSpritesStatsDiv = document.getElementById('selected-sprites-stats');
 
+    // Help Modal Elements (Added)
+    elements.helpButton = document.getElementById('help-button');
+    elements.helpDialog = document.getElementById('help-dialog');
+    elements.helpCloseButton = document.getElementById('help-close-button');
+
     // Validation
     for (const key in elements) {
         const isCollection = key.endsWith('Buttons') || key.endsWith('Checkboxes');
         // Adjusted check to allow null collections (querySelectorAll might return empty)
         if (elements[key] === null && !isCollection && !key.includes('Button') && !key.includes('Input') && !key.includes('Select') && !key.endsWith('Div')) {
             // Only warn for critical elements that are definitely expected
-             if (document.getElementById(key.replace(/([A-Z])/g, '-$1').toLowerCase()) || document.querySelector(`#${key.replace(/([A-Z])/g, '-$1').toLowerCase()}`)) {
-                 console.warn(`DOM element reference is null for key: ${key}. Element might exist but ID/Selector mismatch?`);
-             } else {
-                 // Don't warn if the element truly isn't found (might be conditional UI)
-             }
+            if (document.getElementById(key.replace(/([A-Z])/g, '-$1').toLowerCase()) || document.querySelector(`#${key.replace(/([A-Z])/g, '-$1').toLowerCase()}`)) {
+                console.warn(`DOM element reference is null for key: ${key}. Element might exist but ID/Selector mismatch?`);
+            } else {
+                // Don't warn if the element truly isn't found (might be conditional UI)
+            }
         } else if (isCollection && !(elements[key] instanceof NodeList)) {
             console.warn(`Expected NodeList but got different type for key: ${key}`, elements[key]);
         }
