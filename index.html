@@ -26,10 +26,35 @@
         <section id="settings-section">
             <h2>2. Settings</h2>
             <div class="setting">
-                <label for="threshold-slider">Threshold:</label>
-                <input type="range" id="threshold-slider" min="0" max="255" value="128">
-                <span id="threshold-value">128</span>
+                <label for="threshold-type-select">Threshold Type:</label>
+                <select id="threshold-type-select">
+                    <option value="manual" selected>Manual</option>
+                    <option value="adaptive-mean">Adaptive Mean</option>
+                    <!-- <option value="adaptive-gaussian">Adaptive Gaussian</option> --> <!-- Add later if needed -->
+                </select>
             </div>
+
+            <div id="manual-threshold-settings" class="threshold-settings-group visible">
+                <div class="setting">
+                    <label for="threshold-slider">Threshold:</label>
+                    <input type="range" id="threshold-slider" min="0" max="255" value="128">
+                    <span id="threshold-value">128</span>
+                </div>
+            </div>
+
+            <div id="adaptive-threshold-settings" class="threshold-settings-group">
+                 <div class="setting">
+                    <label for="adaptive-blocksize-input">Block Size:</label>
+                    <input type="number" id="adaptive-blocksize-input" min="3" step="2" value="11">
+                     <span class="setting-hint">(Neighborhood size, odd number)</span>
+                </div>
+                 <div class="setting">
+                    <label for="adaptive-c-input">C Value:</label>
+                    <input type="number" id="adaptive-c-input" step="1" value="2">
+                     <span class="setting-hint">(Constant subtracted from mean)</span>
+                </div>
+            </div>
+
              <div class="setting">
                 <label for="min-sprite-size-slider">Min Sprite Size (pixels):</label>
                 <input type="range" id="min-sprite-size-slider" min="1" max="500" value="10">

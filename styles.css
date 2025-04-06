@@ -11,174 +11,6 @@ body {
     padding: 30px;
     border-radius: 8px;
     box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-}
-
-h1, h2 {
-    color: #333;
-    border-bottom: 1px solid #eee;
-    padding-bottom: 10px;
-    margin-bottom: 20px;
-}
-
-section {
-    margin-bottom: 30px;
-    padding: 20px;
-    border: 1px solid #ddd;
-    border-radius: 5px;
-    background-color: #fafafa;
-}
-
-#image-preview-container {
-    position: relative; /* Needed for absolute positioning of overlays */
-    width: 100%;
-    max-width: 600px; /* Limit initial size */
-    max-height: 400px;
-    overflow: hidden; /* Enable panning */
-    border: 1px solid #ccc;
-    margin-top: 15px;
-    cursor: grab;
-}
-
-#image-preview-canvas {
-    display: block;
-    max-width: 100%;
-    max-height: 100%;
-    transition: transform 0.1s ease-out; /* Smooth zoom/pan */
-}
-
-#debug-overlays {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    pointer-events: none; /* Allow interaction with canvas below */
-}
-
-.zoom-controls {
-    margin-top: 10px;
-}
-
-.zoom-controls button {
-    padding: 5px 10px;
-    margin-right: 5px;
-    cursor: pointer;
-}
-
-
-.setting {
-    margin-bottom: 15px;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-
-.setting label {
-    min-width: 150px;
-}
-
-fieldset {
-    border: 1px solid #ccc;
-    padding: 15px;
-    margin-top: 15px;
-    border-radius: 4px;
-}
-
-fieldset legend {
-    padding: 0 5px;
-    font-weight: bold;
-}
-
-fieldset label {
-    display: block;
-    margin-bottom: 5px;
-}
-
-
-button {
-    padding: 10px 15px;
-    background-color: #007bff;
-    color: white;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    transition: background-color 0.2s ease;
-}
-
-button:hover {
-    background-color: #0056b3;
-}
-
-button:disabled {
-    background-color: #ccc;
-    cursor: not-allowed;
-}
-
-input[type="file"],
-input[type="range"],
-input[type="number"],
-select {
-    padding: 8px;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-}
-
-input[type="range"] {
-    cursor: pointer;
-}
-
-#processing-status {
-    margin-top: 10px;
-    font-style: italic;
-    color: #555;
-}
-
-
-#spritesheet-preview-container {
-    margin-top: 15px;
-    border: 1px solid #ccc;
-    min-height: 100px; /* Ensure it's visible even when empty */
-    background-color: #eee; /* Placeholder background */
-    overflow: auto; /* Scroll if spritesheet is large */
-    max-width: 100%;
-}
-
-#spritesheet-preview-canvas {
-     display: block; /* Remove extra space below canvas */
-}
-
-/* Basic bounding box styling */
-.bbox {
-    position: absolute;
-    border: 1px solid red;
-    box-sizing: border-box; /* Include border in width/height */
-    pointer-events: none; /* Don't interfere with canvas events */
-}
-
-/* Specific styles for different debug overlays can be added here */
-.ccl-label {
-    position: absolute;
-    font-size: 8px;
-    color: yellow;
-    background-color: rgba(0, 0, 0, 0.5);
-    padding: 1px;
-    border-radius: 2px;
-    pointer-events: none;
-}
-
-body {
-    font-family: sans-serif;
-    margin: 20px;
-    background-color: #f4f4f4;
-}
-
-.container {
-    max-width: 1200px;
-    margin: 0 auto;
-    background-color: #fff;
-    padding: 30px;
-    border-radius: 8px;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
     display: flex;
     flex-direction: column;
     gap: 20px;
@@ -193,7 +25,7 @@ h1, h2 {
 }
 
 section {
-    margin-bottom: 10px; /* Reduced margin */
+    margin-bottom: 10px; 
     padding: 20px;
     border: 1px solid #ddd;
     border-radius: 5px;
@@ -201,35 +33,32 @@ section {
 }
 
 #image-preview-container {
-    position: relative; /* Needed for absolute positioning of overlays */
+    position: relative; 
     width: 100%;
-    max-width: 600px; /* Limit initial size */
-    height: 400px; /* Fixed height */
-    overflow: hidden; /* Enable panning */
+    max-width: 600px; 
+    height: 400px; 
+    overflow: hidden; 
     border: 1px solid #ccc;
     margin-top: 15px;
     cursor: grab;
-    background-color: #e0e0e0; /* Placeholder background */
+    background-color: #e0e0e0; 
 }
 
 #image-preview-canvas {
     display: block;
-    /* max-width: 100%; */
-    /* max-height: 100%; */
-    /* width/height set by JS, transform handles scaling */
-    transform-origin: 0 0; /* Set transform origin for scaling/panning */
-    background-color: #fff; /* White background behind image */
+    transform-origin: 0 0; 
+    background-color: #fff; 
 }
 
 #debug-overlays {
     position: absolute;
     top: 0;
     left: 0;
-    width: 100%; /* Will be resized by JS to match image */
-    height: 100%;/* Will be resized by JS */
-    pointer-events: none; /* Allow interaction with canvas below */
-    transform-origin: 0 0; /* Match canvas transform origin */
-    overflow: hidden; /* Clip overlays to container bounds */
+    width: 100%; 
+    height: 100%;
+    pointer-events: none; 
+    transform-origin: 0 0; 
+    overflow: hidden; 
 }
 
 .zoom-controls {
@@ -248,7 +77,7 @@ section {
     display: flex;
     align-items: center;
     gap: 10px;
-    flex-wrap: wrap; /* Allow wrapping on small screens */
+    flex-wrap: wrap; 
 }
 
 .setting label {
@@ -270,7 +99,7 @@ fieldset legend {
 }
 
 fieldset label {
-    display: inline-block; /* Arrange checkboxes side-by-side */
+    display: inline-block; 
     margin-right: 15px;
     margin-bottom: 5px;
     font-weight: normal;
@@ -285,7 +114,7 @@ button {
     border-radius: 4px;
     cursor: pointer;
     transition: background-color 0.2s ease;
-    margin-right: 10px; /* Add some space between buttons */
+    margin-right: 10px; 
 }
 
 button:hover:not(:disabled) {
@@ -310,7 +139,7 @@ input[type="file"] {
 
 input[type="range"] {
     cursor: pointer;
-    flex-grow: 1; /* Allow slider to take up space */
+    flex-grow: 1; 
     max-width: 200px;
 }
 
@@ -319,38 +148,68 @@ select {
     padding: 8px;
     border: 1px solid #ccc;
     border-radius: 4px;
-    width: 80px; /* Fixed width for number inputs */
+    width: 80px; 
 }
 
 #processing-status {
     margin-top: 10px;
     font-style: italic;
     color: #555;
-    min-height: 1.2em; /* Prevent layout shift */
+    min-height: 1.2em; 
 }
 
 
 #spritesheet-preview-container {
     margin-top: 15px;
     border: 1px solid #ccc;
-    min-height: 100px; /* Ensure it's visible even when empty */
-    max-height: 400px; /* Limit height */
-    background-color: #eee; /* Placeholder background */
-    overflow: auto; /* Scroll if spritesheet is large */
+    min-height: 100px; 
+    max-height: 400px; 
+    background-color: #eee; 
+    overflow: auto; 
     width: 100%;
 }
 
 #spritesheet-preview-canvas {
-     display: block; /* Remove extra space below canvas */
-     background-color: #fff; /* White background for the sheet */
-     margin: 0 auto; /* Center if narrower than container */
+     display: block; 
+     background-color: #fff; 
+     margin: 0 auto; 
 }
 
-/* Bounding box styling in overlay container */
+/* Styles for grouping and hiding/showing threshold settings */
+.threshold-settings-group {
+    display: none; 
+    border: 1px dashed #eee;
+    padding: 15px;
+    margin-top: 10px;
+    margin-bottom: 15px;
+    border-radius: 4px;
+}
+
+.threshold-settings-group.visible {
+    display: block; 
+}
+
+.setting-hint {
+    font-size: 0.8em;
+    color: #666;
+    margin-left: 5px;
+}
+
+/* Basic bounding box styling */
 .bbox {
     position: absolute;
     border: 1px solid red;
-    box-sizing: border-box; /* Include border in width/height */
-    pointer-events: none; /* Don't interfere with canvas events */
+    box-sizing: border-box; 
+    pointer-events: none; 
 }
 
+/* Specific styles for different debug overlays can be added here */
+.ccl-label {
+    position: absolute;
+    font-size: 8px;
+    color: yellow;
+    background-color: rgba(0, 0, 0, 0.5);
+    padding: 1px;
+    border-radius: 2px;
+    pointer-events: none;
+}

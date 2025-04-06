@@ -83,3 +83,98 @@ export function getThresholdedImageData(grayscaleImageData, threshold) {
     applyThreshold(thresholdedImageData, threshold);
     return thresholdedImageData;
 }
+
+/**
+ * Applies adaptive thresholding (Mean method) to grayscale ImageData.
+ * Modifies the ImageData in place. Transparent pixels remain transparent.
+ * For each pixel, calculates the mean gray value of its neighborhood,
+ * and thresholds based on (mean - C).
+ * @param {ImageData} grayscaleImageData - The grayscale ImageData object (will be modified).
+ * @param {number} blockSize - Size of the pixel neighborhood (must be an odd integer >= 3).
+ * @param {number} C - Constant subtracted from the calculated mean.
+ */
+export function applyAdaptiveThreshold(grayscaleImageData, blockSize, C) {
+    if (blockSize % 2 === 0 || blockSize < 3) {
+        throw new Error("Block size must be an odd integer >= 3.");
+    }
+
+    const width = grayscaleImageData.width;
+    const height = grayscaleImageData.height;
+    const data = grayscaleImageData.data;
+    const halfBlock = Math.floor(blockSize / 2);
+
+    // Create a copy of the original grayscale data to read from,
+    // because we'll be modifying the input 'data' array in place.
+    const sourceData = new Uint8ClampedArray(data);
+
+    // Helper to get grayscale value (from source) handling boundaries (mirroring)
+    function getGrayValue(x, y) {
+        // Clamp coordinates to be within bounds (simple mirroring)
+        const clampedX = Math.max(0, Math.min(width - 1, x));
+        const clampedY = Math.max(0, Math.min(height - 1, y));
+        const index = (clampedY * width + clampedX) * 4;
+        // Return gray value, or 0 if transparent (treat transparent as background)
+        return sourceData[index + 3] > 0 ? sourceData[index] : 0;
+    }
+
+    for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+            const centerIndex = (y * width + x) * 4;
+
+            // Skip fully transparent pixels in the original image
+            if (sourceData[centerIndex + 3] === 0) {
+                 // Ensure output is also fully transparent black for these pixels
+                 data[centerIndex] = 0;
+                 data[centerIndex + 1] = 0;
+                 data[centerIndex + 2] = 0;
+                 data[centerIndex + 3] = 0;
+                continue;
+            }
+
+            let sum = 0;
+            let count = 0; // Use count in case neighborhood goes out of bounds
+
+            // Calculate mean of the blockSize x blockSize neighborhood
+            for (let j = -halfBlock; j <= halfBlock; j++) {
+                for (let i = -halfBlock; i <= halfBlock; i++) {
+                    sum += getGrayValue(x + i, y + j);
+                    count++; // Always square block, boundaries handled by getGrayValue
+                }
+            }
+
+            const mean = sum / count;
+            const localThreshold = mean - C;
+            const centerGray = sourceData[centerIndex]; // Gray value of the current pixel
+
+            // Apply threshold: > localThreshold = foreground (white), <= = background (black)
+            const value = centerGray > localThreshold ? 255 : 0;
+
+            data[centerIndex] = value;     // R
+            data[centerIndex + 1] = value; // G
+            data[centerIndex + 2] = value; // B
+            // Alpha remains unchanged (should be 255 unless original was transparent)
+            data[centerIndex + 3] = sourceData[centerIndex + 3];
+        }
+    }
+    console.log(`Applied adaptive threshold: blockSize=${blockSize}, C=${C}`);
+}
+
+/**
+ * Creates a new ImageData object representing the adaptive thresholded version of a grayscale image.
+ * Does not modify the input grayscale ImageData. Uses the Mean method.
+ * @param {ImageData} grayscaleImageData - The grayscale ImageData.
+ * @param {number} blockSize - Size of the pixel neighborhood (odd integer >= 3).
+ * @param {number} C - Constant subtracted from the mean.
+ * @returns {ImageData} A new ImageData object with adaptive thresholded data (black/white).
+ */
+export function getAdaptiveThresholdedImageData(grayscaleImageData, blockSize, C) {
+    // Create a copy to avoid modifying the input grayscale data
+    const thresholdedImageData = new ImageData(
+        new Uint8ClampedArray(grayscaleImageData.data),
+        grayscaleImageData.width,
+        grayscaleImageData.height
+    );
+    // Apply adaptive threshold *to the copy*.
+    applyAdaptiveThreshold(thresholdedImageData, blockSize, C);
+    return thresholdedImageData;
+}

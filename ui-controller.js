@@ -1,5 +1,5 @@
 import { loadImage, getImageDataFromCanvas } from 'image-loader';
-import { getGrayscaleImageData, getThresholdedImageData } from 'image-processor';
+import { getGrayscaleImageData, getThresholdedImageData, getAdaptiveThresholdedImageData } from 'image-processor';
 import { findBlobs, getLabeledImageData } from 'blob-detector';
 import { generateSpritesheet, downloadCanvasAsPNG } from 'spritesheet-generator';
 import { drawBoundingBoxes, clearOverlays } from 'utils';
@@ -12,6 +12,13 @@ let thresholdedImageData = null;
 let cclResult = null; // { blobs: Array<Object>, labels: Int32Array }
 let detectedBlobs = []; // Just the blobs array for convenience
 let generatedSpritesheetCanvas = null; // Store the generated canvas
+
+let currentThresholdSettings = { 
+    type: 'manual', 
+    manualValue: 128,
+    adaptiveBlockSize: 11,
+    adaptiveC: 2
+};
 
 // Viewport State
 let currentZoom = 1;
@@ -30,8 +37,11 @@ let thresholdSlider, thresholdValueSpan, minSizeSlider, minSizeValueSpan;
 let debugViewCheckboxes, debugOverlayCheckboxes; // Collections of checkboxes
 let processButton, processingStatusDiv;
 let gridColsInput, paddingInput, alignmentSelect;
-let generateSpritesheetButton, spritesheetPreviewCanvas, spritesheetPreviewContainer, downloadSpritesheetButton; // Changed variable name
+let generateSpritesheetButton, spritesheetPreviewCanvas, spritesheetPreviewContainer, downloadSpritesheetButton;
 let zoomInButton, zoomOutButton;
+let thresholdTypeSelect;
+let manualThresholdSettingsDiv, adaptiveThresholdSettingsDiv;
+let adaptiveBlocksizeInput, adaptiveCInput;
 
 
 // --- Initialization ---
@@ -41,8 +51,13 @@ export function initUI() {
     imagePreviewCanvas = document.getElementById('image-preview-canvas');
     imagePreviewContainer = document.getElementById('image-preview-container');
     debugOverlaysContainer = document.getElementById('debug-overlays');
+    thresholdTypeSelect = document.getElementById('threshold-type-select');
+    manualThresholdSettingsDiv = document.getElementById('manual-threshold-settings');
+    adaptiveThresholdSettingsDiv = document.getElementById('adaptive-threshold-settings');
     thresholdSlider = document.getElementById('threshold-slider');
     thresholdValueSpan = document.getElementById('threshold-value');
+    adaptiveBlocksizeInput = document.getElementById('adaptive-blocksize-input');
+    adaptiveCInput = document.getElementById('adaptive-c-input');
     minSizeSlider = document.getElementById('min-sprite-size-slider');
     minSizeValueSpan = document.getElementById('min-sprite-size-value');
     // Get checkboxes by name for easier handling
@@ -53,7 +68,7 @@ export function initUI() {
     gridColsInput = document.getElementById('grid-cols-input');
     paddingInput = document.getElementById('padding-input');
     alignmentSelect = document.getElementById('alignment-select');
-    generateSpritesheetButton = document.getElementById('generate-spritesheet-button'); // Use correct ID
+    generateSpritesheetButton = document.getElementById('generate-spritesheet-button'); 
     spritesheetPreviewCanvas = document.getElementById('spritesheet-preview-canvas');
     spritesheetPreviewContainer = document.getElementById('spritesheet-preview-container');
     downloadSpritesheetButton = document.getElementById('download-spritesheet-button');
@@ -63,20 +78,23 @@ export function initUI() {
 
     // Add event listeners
     imageUploadInput.addEventListener('change', handleImageUpload);
-    thresholdSlider.addEventListener('input', handleThresholdChange);
+    thresholdTypeSelect.addEventListener('change', handleThresholdTypeChange);
+    thresholdSlider.addEventListener('input', handleManualThresholdChange); 
+    adaptiveBlocksizeInput.addEventListener('input', handleAdaptiveParamsChange);
+    adaptiveCInput.addEventListener('input', handleAdaptiveParamsChange);
     minSizeSlider.addEventListener('input', handleMinSizeChange);
     processButton.addEventListener('click', handleProcessImage);
 
     // Add listeners to all debug checkboxes
     debugViewCheckboxes.forEach(cb => cb.addEventListener('change', handleDebugViewChange));
-    debugOverlayCheckboxes.forEach(cb => cb.addEventListener('change', updateDebugOverlays)); // Overlays update independently
+    debugOverlayCheckboxes.forEach(cb => cb.addEventListener('change', updateDebugOverlays)); 
 
     // Spritesheet controls trigger clearing the generated sheet
     gridColsInput.addEventListener('change', handleSpritesheetSettingsChange);
     paddingInput.addEventListener('change', handleSpritesheetSettingsChange);
     alignmentSelect.addEventListener('change', handleSpritesheetSettingsChange);
 
-    generateSpritesheetButton.addEventListener('click', handleGenerateSpritesheet); // Listen on the correct button
+    generateSpritesheetButton.addEventListener('click', handleGenerateSpritesheet); 
     downloadSpritesheetButton.addEventListener('click', handleDownloadSpritesheet);
 
     // Zoom and Pan Listeners
@@ -85,14 +103,14 @@ export function initUI() {
     imagePreviewContainer.addEventListener('mousedown', startPan);
     imagePreviewContainer.addEventListener('mousemove', pan);
     imagePreviewContainer.addEventListener('mouseup', endPan);
-    imagePreviewContainer.addEventListener('mouseleave', endPan); // Important to end pan if mouse leaves container
-    imagePreviewContainer.addEventListener('wheel', handleWheelZoom, { passive: false }); // Prevent page scroll
+    imagePreviewContainer.addEventListener('mouseleave', endPan); 
+    imagePreviewContainer.addEventListener('wheel', handleWheelZoom, { passive: false }); 
 
 
      // Initial state updates
-    thresholdValueSpan.textContent = thresholdSlider.value;
+    updateThresholdSettingsUI(); 
     minSizeValueSpan.textContent = minSizeSlider.value;
-    disableControls(true); // Disable most controls until image loaded
+    disableControls(true); 
 
     console.log("UI Initialized");
 }
@@ -103,56 +121,103 @@ async function handleImageUpload() {
     console.log("Handling image upload...");
     clearStateBeforeLoad();
     processingStatusDiv.textContent = 'Loading image...';
-    disableControls(true); // Keep disabled during load
+    disableControls(true); 
 
     try {
-        originalImageInfo = await loadImage(imageUploadInput, imagePreviewCanvas); // returns { img, naturalWidth, naturalHeight }
+        originalImageInfo = await loadImage(imageUploadInput, imagePreviewCanvas); 
         originalImageData = getImageDataFromCanvas(imagePreviewCanvas);
 
         if (!originalImageData) {
              throw new Error("Could not get image pixel data after loading.");
         }
 
-        resetZoomPan(); // Fit and center the new image
-        updateImageDisplay(); // Apply initial zoom/pan transform
+        resetZoomPan(); 
+        updateImageDisplay(); 
 
         processingStatusDiv.textContent = 'Image loaded. Adjust settings and click "Detect Sprites".';
-        disableControls(false); // Enable controls now
-         clearGeneratedSpritesheet(); // Ensure previous sheet is gone
+        disableControls(false); 
+         clearGeneratedSpritesheet(); 
 
         console.log("Image loaded successfully.");
     } catch (error) {
         processingStatusDiv.textContent = `Error: ${error.message}`;
         console.error("Image loading failed:", error);
         alert(`Error loading image: ${error.message}`);
-        clearStateBeforeLoad(); // Ensure clean state on failure
-        disableControls(true); // Remain disabled
+        clearStateBeforeLoad(); 
+        disableControls(true); 
     }
 }
 
-// Handles changes to threshold slider
-function handleThresholdChange() {
-    thresholdValueSpan.textContent = thresholdSlider.value;
-    // Invalidate subsequent processing steps
+// Handles change in the threshold type dropdown
+function handleThresholdTypeChange() {
+    currentThresholdSettings.type = thresholdTypeSelect.value;
+    updateThresholdSettingsUI(); 
+    invalidateThresholdResults(); 
+    processingStatusDiv.textContent = "Threshold type changed. Click 'Detect Sprites' to update results.";
+}
+
+// Handles changes to manual threshold slider
+function handleManualThresholdChange() {
+    currentThresholdSettings.manualValue = parseInt(thresholdSlider.value, 10);
+    updateThresholdSettingsUI(); 
+    invalidateThresholdResults(); 
+    // Update view immediately ONLY if threshold view is active
+    if (document.getElementById('show-threshold-checkbox').checked && currentThresholdSettings.type === 'manual') {
+        processingStatusDiv.textContent = "Manual threshold changed. Click 'Detect Sprites' to update results.";
+    }
+}
+
+// Handles changes to adaptive threshold parameters (Block Size, C)
+function handleAdaptiveParamsChange() {
+    // Ensure block size is odd
+    let blockSize = parseInt(adaptiveBlocksizeInput.value, 10);
+    if (blockSize % 2 === 0) {
+        blockSize = Math.max(3, blockSize + 1); 
+        adaptiveBlocksizeInput.value = blockSize; 
+    }
+     if (blockSize < 3) {
+        blockSize = 3;
+        adaptiveBlocksizeInput.value = 3;
+     }
+    currentThresholdSettings.adaptiveBlockSize = blockSize;
+    currentThresholdSettings.adaptiveC = parseInt(adaptiveCInput.value, 10);
+
+    updateThresholdSettingsUI(); 
+    invalidateThresholdResults(); 
+    if (document.getElementById('show-threshold-checkbox').checked && currentThresholdSettings.type !== 'manual') {
+        processingStatusDiv.textContent = "Adaptive threshold params changed. Click 'Detect Sprites' to update results.";
+    }
+}
+
+// Helper to invalidate threshold-dependent results
+function invalidateThresholdResults() {
     thresholdedImageData = null;
     cclResult = null;
     detectedBlobs = [];
     clearGeneratedSpritesheet();
-    // Update view immediately ONLY if threshold view is active
-    if (document.getElementById('show-threshold-checkbox').checked) {
-        // Indicate processing is needed again, rather than auto-updating view here
-        // This avoids potentially slow re-processing on every slider move.
-        processingStatusDiv.textContent = "Threshold changed. Click 'Detect Sprites' to update results.";
-        // Alternatively, could call updateDebugView() but requires re-thresholding first.
-    }
-     // BBoxes depend on threshold, so clear them if shown
+    // Clear bounding box overlays as they depend on the threshold
     if (document.getElementById('show-bboxes-checkbox').checked) {
-         clearOverlays(debugOverlaysContainer); // Clear bounding box overlays
-         if (detectedBlobs.length > 0) { // Only show message if there were blobs before
-            processingStatusDiv.textContent = "Threshold changed. Click 'Detect Sprites' to update bounding boxes.";
-         }
+         clearOverlays(debugOverlaysContainer);
      }
+     console.log("Threshold-dependent results invalidated.");
+}
 
+// Updates the UI elements related to threshold settings based on current state
+function updateThresholdSettingsUI() {
+    // Update visibility
+    manualThresholdSettingsDiv.classList.toggle('visible', currentThresholdSettings.type === 'manual');
+    adaptiveThresholdSettingsDiv.classList.toggle('visible', currentThresholdSettings.type.startsWith('adaptive-'));
+
+    // Update values displayed
+    thresholdValueSpan.textContent = currentThresholdSettings.manualValue;
+    thresholdSlider.value = currentThresholdSettings.manualValue; 
+    adaptiveBlocksizeInput.value = currentThresholdSettings.adaptiveBlockSize;
+    adaptiveCInput.value = currentThresholdSettings.adaptiveC;
+
+    // Enable/disable relevant inputs based on type
+    thresholdSlider.disabled = (currentThresholdSettings.type !== 'manual' || !originalImageInfo);
+    adaptiveBlocksizeInput.disabled = (!currentThresholdSettings.type.startsWith('adaptive-') || !originalImageInfo);
+    adaptiveCInput.disabled = (!currentThresholdSettings.type.startsWith('adaptive-') || !originalImageInfo);
 }
 
 // Handles changes to min sprite size slider
@@ -178,7 +243,6 @@ function handleSpritesheetSettingsChange() {
      processingStatusDiv.textContent = "Spritesheet settings changed. Click 'Generate Spritesheet' to update.";
 }
 
-
 // Main processing pipeline triggered by button
 async function handleProcessImage() {
     if (!originalImageData) {
@@ -187,12 +251,11 @@ async function handleProcessImage() {
     }
 
     console.log("Starting image processing pipeline...");
-    disableControls(true); // Disable UI during processing
+    disableControls(true); 
     processingStatusDiv.textContent = 'Processing: Grayscale...';
-    await wait(10); // Allow UI update
+    await wait(10); 
 
     // --- 1. Grayscale ---
-    // Always generate from original if not cached or if original exists
     if (!grayscaleImageData && originalImageData) {
         grayscaleImageData = getGrayscaleImageData(originalImageData);
          console.log("Generated grayscale data.");
@@ -208,11 +271,35 @@ async function handleProcessImage() {
     await wait(10);
 
     // --- 2. Thresholding ---
-    // Always recalculate based on current slider value using the grayscale version
-    const threshold = parseInt(thresholdSlider.value, 10);
-    thresholdedImageData = getThresholdedImageData(grayscaleImageData, threshold); // Creates a new ImageData
-    console.log(`Generated thresholded data with threshold ${threshold}.`);
-
+    try {
+        switch (currentThresholdSettings.type) {
+            case 'manual':
+                thresholdedImageData = getThresholdedImageData(
+                    grayscaleImageData,
+                    currentThresholdSettings.manualValue
+                );
+                console.log(`Generated manual thresholded data (T=${currentThresholdSettings.manualValue}).`);
+                break;
+            case 'adaptive-mean':
+                thresholdedImageData = getAdaptiveThresholdedImageData(
+                    grayscaleImageData,
+                    currentThresholdSettings.adaptiveBlockSize,
+                    currentThresholdSettings.adaptiveC
+                );
+                console.log(`Generated adaptive mean thresholded data (Block=${currentThresholdSettings.adaptiveBlockSize}, C=${currentThresholdSettings.adaptiveC}).`);
+                break;
+            default:
+                throw new Error(`Unknown threshold type: ${currentThresholdSettings.type}`);
+        }
+    } catch (error) {
+         console.error("Error during thresholding:", error);
+         processingStatusDiv.textContent = `Error during thresholding: ${error.message}`;
+         thresholdedImageData = null; 
+         cclResult = null;
+         detectedBlobs = [];
+         disableControls(false); 
+         return; 
+    }
 
     processingStatusDiv.textContent = 'Processing: Finding Blobs (CCL)...';
     await wait(10);
@@ -221,28 +308,28 @@ async function handleProcessImage() {
     const minSize = parseInt(minSizeSlider.value, 10);
     const startTime = performance.now();
     try {
-        cclResult = findBlobs(thresholdedImageData, minSize); // Returns { blobs, labels }
-        detectedBlobs = cclResult ? cclResult.blobs : []; // Store blobs separately
+        if (!thresholdedImageData) {
+             throw new Error("Thresholding step failed, cannot perform CCL.");
+        }
+        cclResult = findBlobs(thresholdedImageData, minSize); 
+        detectedBlobs = cclResult ? cclResult.blobs : []; 
     } catch(error) {
         console.error("Error during blob detection:", error);
         processingStatusDiv.textContent = `Error during blob detection: ${error.message}`;
         cclResult = null;
         detectedBlobs = [];
-        disableControls(false); // Re-enable controls on error
-        return; // Stop processing
+        disableControls(false); 
+        return; 
     }
     const endTime = performance.now();
     console.log(`CCL completed in ${((endTime - startTime) / 1000).toFixed(2)} seconds.`);
 
-
     processingStatusDiv.textContent = `Processing complete. Found ${detectedBlobs.length} sprites. Ready to generate spritesheet.`;
-    disableControls(false); // Re-enable UI
-    clearGeneratedSpritesheet(); // Clear old spritesheet, require new generation
+    disableControls(false); 
+    clearGeneratedSpritesheet(); 
 
     // --- 4. Update Debug Views/Overlays ---
-    // Update the main canvas view based on checkboxes first
     updateDebugView();
-    // Then update the overlays (like bounding boxes)
     updateDebugOverlays();
 
     console.log("Processing pipeline finished.");
@@ -250,7 +337,6 @@ async function handleProcessImage() {
 
 // Handler for Debug VIEW checkboxes (Grayscale, Threshold, CCL)
 function handleDebugViewChange(event) {
-    // Uncheck other view checkboxes if one is checked
     if (event.target.checked) {
         debugViewCheckboxes.forEach(cb => {
             if (cb !== event.target) {
@@ -258,19 +344,19 @@ function handleDebugViewChange(event) {
             }
         });
     }
-    updateDebugView(); // Update the main canvas display
+    updateDebugView(); 
 }
 
 // Update the main canvas based on which debug VIEW checkbox is checked
 function updateDebugView() {
-    if (!originalImageData) return; // Nothing to show if no image
+    if (!originalImageData) return; 
 
     const ctx = imagePreviewCanvas.getContext('2d');
     const width = originalImageData.width;
     const height = originalImageData.height;
 
-    let imageDataToShow = originalImageData; // Default to original
-    let viewMessage = null; // Message if data is missing
+    let imageDataToShow = originalImageData; 
+    let viewMessage = null; 
 
     if (document.getElementById('show-grayscale-checkbox').checked) {
         if (!grayscaleImageData) {
@@ -288,8 +374,7 @@ function updateDebugView() {
          if (!cclResult || !cclResult.labels) {
             viewMessage = "CCL data not generated. Click 'Detect Sprites'.";
         } else {
-            // Generate colored label image on demand
-             imageDataToShow = getLabeledImageData(cclResult.labels, width, height);
+            imageDataToShow = getLabeledImageData(cclResult.labels, width, height);
         }
     }
      // else: No view checkbox checked, imageDataToShow remains originalImageData
@@ -298,44 +383,36 @@ function updateDebugView() {
     if (viewMessage) {
         console.warn(viewMessage);
         processingStatusDiv.textContent = viewMessage;
-        // Optionally, revert to original image view if data is missing
         imageDataToShow = originalImageData;
-        // Or just leave the canvas as is, showing the previous valid view
     }
 
-
     // Redraw the base image on the canvas using the selected ImageData
-    // Ensure canvas size matches image data dimensions before drawing
     imagePreviewCanvas.width = width;
     imagePreviewCanvas.height = height;
 
-    // Use a temporary canvas for putImageData, then drawImage (can be more performant)
     const tempCanvas = document.createElement('canvas');
     tempCanvas.width = width;
     tempCanvas.height = height;
     const tempCtx = tempCanvas.getContext('2d');
     tempCtx.putImageData(imageDataToShow, 0, 0);
 
-    ctx.clearRect(0, 0, width, height); // Clear previous content
+    ctx.clearRect(0, 0, width, height); 
     ctx.drawImage(tempCanvas, 0, 0);
 
     console.log("Debug view updated.");
 }
 
-
 // Update overlays (bounding boxes) based on checkbox state
 function updateDebugOverlays() {
-     clearOverlays(debugOverlaysContainer); // Clear existing overlays first
+     clearOverlays(debugOverlaysContainer); 
 
      if (document.getElementById('show-bboxes-checkbox').checked) {
         if (detectedBlobs && detectedBlobs.length > 0) {
              console.log(`Drawing ${detectedBlobs.length} bounding boxes.`);
-             // Draw bounding boxes in the separate overlay container
              drawBoundingBoxes(debugOverlaysContainer, detectedBlobs.map(b => b.bounds), 'red');
         } else {
              console.log("Bounding box overlay enabled, but no blobs detected or processed yet.");
-             // Only show message if checkbox is checked but no blobs exist *after* processing
-             if (cclResult) { // Check if processing has run at least once
+             if (cclResult) { 
                 processingStatusDiv.textContent = "No sprites found meeting current criteria.";
              } else {
                 processingStatusDiv.textContent = "Bounding box view requires 'Detect Sprites'.";
@@ -345,8 +422,7 @@ function updateDebugOverlays() {
      console.log("Debug overlays updated.");
 }
 
-
-// Generates and displays the spritesheet - Renamed handler
+// Generates and displays the spritesheet 
 async function handleGenerateSpritesheet() {
      if (!detectedBlobs || detectedBlobs.length === 0) {
         alert("No sprites detected. Click 'Detect Sprites' first.");
@@ -359,14 +435,13 @@ async function handleGenerateSpritesheet() {
 
     console.log("Generating spritesheet...");
     processingStatusDiv.textContent = 'Generating spritesheet...';
-    disableControls(true); // Disable UI during generation
+    disableControls(true); 
 
     const cols = parseInt(gridColsInput.value, 10) || 8;
     const padding = parseInt(paddingInput.value, 10) || 0;
     const alignment = alignmentSelect.value;
 
     try {
-        // generateSpritesheet now returns the canvas element directly
         const resultCanvas = await generateSpritesheet(
             originalImageData,
             detectedBlobs,
@@ -375,40 +450,37 @@ async function handleGenerateSpritesheet() {
             alignment
         );
 
-        // Store the generated canvas
         generatedSpritesheetCanvas = resultCanvas;
 
-        // Display the generated canvas in the preview area
         const previewCtx = spritesheetPreviewCanvas.getContext('2d');
         spritesheetPreviewCanvas.width = generatedSpritesheetCanvas.width;
         spritesheetPreviewCanvas.height = generatedSpritesheetCanvas.height;
-        previewCtx.clearRect(0, 0, generatedSpritesheetCanvas.width, generatedSpritesheetCanvas.height); // Clear previous preview
+        previewCtx.clearRect(0, 0, generatedSpritesheetCanvas.width, generatedSpritesheetCanvas.height); 
         previewCtx.drawImage(generatedSpritesheetCanvas, 0, 0);
 
         processingStatusDiv.textContent = `Spritesheet generated (${detectedBlobs.length} sprites). Ready to download.`;
-        downloadSpritesheetButton.disabled = false; // Enable download
+        downloadSpritesheetButton.disabled = false; 
         console.log("Spritesheet generation and preview complete.");
 
     } catch (error) {
         console.error("Spritesheet generation failed:", error);
         processingStatusDiv.textContent = `Error generating spritesheet: ${error.message}`;
         alert(`Error generating spritesheet: ${error.message}`);
-        clearGeneratedSpritesheet(); // Clear potentially broken state
+        clearGeneratedSpritesheet(); 
     } finally {
-        disableControls(false); // Re-enable UI
+        disableControls(false); 
     }
 }
 
-
+// Prepares the spritesheet for download as a PNG
 function handleDownloadSpritesheet() {
     if (!generatedSpritesheetCanvas) {
          alert("Please generate the spritesheet first using the 'Generate Spritesheet' button.");
         return;
     }
      console.log("Preparing spritesheet download...");
-    // Suggest a filename based on the original image name if possible
-     let filename = 'spritcher_spritesheet.png';
-     if (imageUploadInput.files && imageUploadInput.files[0]) {
+    let filename = 'spritcher_spritesheet.png';
+    if (imageUploadInput.files && imageUploadInput.files[0]) {
          const originalName = imageUploadInput.files[0].name;
          const baseName = originalName.substring(0, originalName.lastIndexOf('.')) || originalName;
          filename = `${baseName}_spritesheet.png`;
@@ -417,24 +489,20 @@ function handleDownloadSpritesheet() {
     downloadCanvasAsPNG(generatedSpritesheetCanvas, filename);
 }
 
-
 // --- Zoom and Pan Implementation ---
 
 // Zooms the image view, attempting to keep the point (cx, cy) in container coordinates stationary
 function zoomAtPoint(containerX, containerY, factor) {
-    if (!originalImageInfo) return; // Cannot zoom without an image
+    if (!originalImageInfo) return; 
 
-    const newZoom = Math.max(0.1, Math.min(10, currentZoom * factor)); // Clamp zoom level
+    const newZoom = Math.max(0.1, Math.min(10, currentZoom * factor)); 
 
-    // Calculate image coordinates under the zoom point BEFORE zoom
     const imageXBefore = (containerX - panX) / currentZoom;
     const imageYBefore = (containerY - panY) / currentZoom;
 
-    // Calculate the new panX/panY to keep the image point under the container point
     const newPanX = containerX - imageXBefore * newZoom;
     const newPanY = containerY - imageYBefore * newZoom;
 
-    // Apply the new zoom and pan
     currentZoom = newZoom;
     panX = newPanX;
     panY = newPanY;
@@ -443,36 +511,31 @@ function zoomAtPoint(containerX, containerY, factor) {
 }
 
 function handleWheelZoom(event) {
-    event.preventDefault(); // Prevent default page scrolling
-    const delta = event.deltaY > 0 ? 1 / 1.1 : 1.1; // Zoom out for scroll down, in for scroll up
+    event.preventDefault(); 
+    const delta = event.deltaY > 0 ? 1 / 1.1 : 1.1; 
 
     const rect = imagePreviewContainer.getBoundingClientRect();
-    // Calculate mouse position relative to container
     const mouseX = event.clientX - rect.left;
     const mouseY = event.clientY - rect.top;
 
-    zoomAtPoint(mouseX, mouseY, delta); // Zoom centered on mouse pointer
+    zoomAtPoint(mouseX, mouseY, delta); 
 }
 
 function startPan(event) {
-     // Only pan with left mouse button (button 0)
      if (event.button !== 0 || !originalImageInfo) return;
     isPanning = true;
-    startPanX = event.clientX; // Store mouse position at start
+    startPanX = event.clientX; 
     startPanY = event.clientY;
-    startViewX = panX; // Store pan position at start
+    startViewX = panX; 
     startViewY = panY;
     imagePreviewContainer.style.cursor = 'grabbing';
-    // Prevent text selection during drag
     event.preventDefault();
 }
 
 function pan(event) {
     if (!isPanning) return;
-    // Calculate mouse movement since start
     const dx = event.clientX - startPanX;
     const dy = event.clientY - startPanY;
-    // Update pan based on initial pan + mouse movement
     panX = startViewX + dx;
     panY = startViewY + dy;
     updateImageDisplay();
@@ -497,17 +560,14 @@ function resetZoomPan() {
         const imageHeight = originalImageInfo.naturalHeight;
 
          if (imageWidth > 0 && imageHeight > 0) {
-            // Calculate scale to fit while preserving aspect ratio
             const scaleX = containerWidth / imageWidth;
             const scaleY = containerHeight / imageHeight;
-            currentZoom = Math.min(scaleX, scaleY, 1); // Fit within bounds, max initial zoom 1
+            currentZoom = Math.min(scaleX, scaleY, 1); 
 
-            // Center the scaled image
             panX = (containerWidth - imageWidth * currentZoom) / 2;
             panY = (containerHeight - imageHeight * currentZoom) / 2;
          }
     } else {
-        // Default if no image or container size
         currentZoom = 1;
         panX = 0;
         panY = 0;
@@ -523,80 +583,68 @@ function updateImageDisplay() {
     imagePreviewCanvas.style.transform = transform;
     debugOverlaysContainer.style.transform = transform;
 
-     // Adjust overlay container size to match the natural image size
-     // This ensures overlay elements (like bboxes) are positioned correctly relative to the image pixels
-     if (originalImageInfo) {
-        debugOverlaysContainer.style.width = `${originalImageInfo.naturalWidth}px`;
-        debugOverlaysContainer.style.height = `${originalImageInfo.naturalHeight}px`;
-     } else {
-         debugOverlaysContainer.style.width = `0px`;
-        debugOverlaysContainer.style.height = `0px`;
-     }
+     debugOverlaysContainer.style.width = `${originalImageInfo.naturalWidth}px`;
+     debugOverlaysContainer.style.height = `${originalImageInfo.naturalHeight}px`;
 }
-
 
 // --- Helper Functions ---
 
 // Disables/enables controls that shouldn't be active without an image or during processing
 function disableControls(disabled) {
     const imageLoaded = !!originalImageInfo;
+    const processing = disabled; 
 
-    // Settings
-    thresholdSlider.disabled = disabled || !imageLoaded;
-    minSizeSlider.disabled = disabled || !imageLoaded;
+    thresholdTypeSelect.disabled = processing || !imageLoaded;
 
-    // Debug toggles (allow toggling if image loaded, even if processing needed again)
-    debugViewCheckboxes.forEach(cb => cb.disabled = !imageLoaded);
-    debugOverlayCheckboxes.forEach(cb => cb.disabled = !imageLoaded);
+    thresholdSlider.disabled = processing || !imageLoaded || currentThresholdSettings.type !== 'manual';
 
-    // Actions
-    processButton.disabled = disabled || !imageLoaded;
-    generateSpritesheetButton.disabled = disabled || !imageLoaded; // Generate button
+    adaptiveBlocksizeInput.disabled = processing || !imageLoaded || !currentThresholdSettings.type.startsWith('adaptive-');
+    adaptiveCInput.disabled = processing || !imageLoaded || !currentThresholdSettings.type.startsWith('adaptive-');
 
-    // Spritesheet Generation Settings (allow changing if image loaded)
-    gridColsInput.disabled = disabled || !imageLoaded;
-    paddingInput.disabled = disabled || !imageLoaded;
-    alignmentSelect.disabled = disabled || !imageLoaded;
+    minSizeSlider.disabled = processing || !imageLoaded;
 
-    // Download button state is managed separately based on generation success
-     if (disabled || !generatedSpritesheetCanvas) { // Disable if processing, or no sheet exists
+    debugViewCheckboxes.forEach(cb => cb.disabled = processing || !imageLoaded);
+    debugOverlayCheckboxes.forEach(cb => cb.disabled = processing || !imageLoaded);
+
+    processButton.disabled = processing || !imageLoaded;
+    generateSpritesheetButton.disabled = processing || !imageLoaded;
+
+    gridColsInput.disabled = processing || !imageLoaded;
+    paddingInput.disabled = processing || !imageLoaded;
+    alignmentSelect.disabled = processing || !imageLoaded;
+
+    if (processing || !generatedSpritesheetCanvas) {
          downloadSpritesheetButton.disabled = true;
      } else {
-         downloadSpritesheetButton.disabled = false; // Enable only if not disabled and sheet exists
+         downloadSpritesheetButton.disabled = false;
      }
 
+    zoomInButton.disabled = processing || !imageLoaded;
+    zoomOutButton.disabled = processing || !imageLoaded;
 
-     // Zoom controls only active if image loaded
-    zoomInButton.disabled = disabled || !imageLoaded;
-    zoomOutButton.disabled = disabled || !imageLoaded;
+    imageUploadInput.disabled = processing && imageLoaded;
 
-    // Make file input available unless actively processing
-    imageUploadInput.disabled = disabled && imageLoaded; // Only disable during processing *after* load
-
+    updateThresholdSettingsUI();
 }
 
 // Clears all processing results and generated data, keeps original image if loaded
 function clearProcessingResults() {
     console.log("Clearing processing results...");
     grayscaleImageData = null;
-    thresholdedImageData = null;
+    thresholdedImageData = null; 
     cclResult = null;
     detectedBlobs = [];
     clearGeneratedSpritesheet();
     clearOverlays(debugOverlaysContainer);
-     // Reset debug view checkboxes to unchecked
     debugViewCheckboxes.forEach(cb => cb.checked = false);
     debugOverlayCheckboxes.forEach(cb => cb.checked = false);
-     // Restore main canvas view to original image if available
      if (originalImageData) {
          const ctx = imagePreviewCanvas.getContext('2d');
          imagePreviewCanvas.width = originalImageData.width;
          imagePreviewCanvas.height = originalImageData.height;
          ctx.putImageData(originalImageData, 0, 0);
-          // Re-apply zoom/pan to the restored original image view
          updateImageDisplay();
      } else {
-         // If no original image, clear canvas fully
          const ctx = imagePreviewCanvas.getContext('2d');
          ctx.clearRect(0, 0, imagePreviewCanvas.width, imagePreviewCanvas.height);
          imagePreviewCanvas.width = 1;
@@ -609,48 +657,50 @@ function clearStateBeforeLoad() {
      console.log("Clearing full state.");
      originalImageInfo = null;
      originalImageData = null;
-     clearProcessingResults(); // Clear derived data
+     clearProcessingResults(); 
 
-    // Clear canvas visually and reset transform
+     currentThresholdSettings = {
+        type: 'manual',
+        manualValue: 128,
+        adaptiveBlockSize: 11,
+        adaptiveC: 2
+    };
+    if (thresholdTypeSelect) thresholdTypeSelect.value = 'manual'; 
+    updateThresholdSettingsUI();
+
     if (imagePreviewCanvas) {
         const ctx = imagePreviewCanvas.getContext('2d');
-        imagePreviewCanvas.style.transform = ''; // Reset transform first
+        imagePreviewCanvas.style.transform = ''; 
         ctx.clearRect(0, 0, imagePreviewCanvas.width, imagePreviewCanvas.height);
-         // Reset dimensions to avoid showing old scaled canvas visually
         imagePreviewCanvas.width = 1;
         imagePreviewCanvas.height = 1;
     }
-    // Clear overlay container and reset transform
     if (debugOverlaysContainer) {
-        clearOverlays(debugOverlaysContainer); // Clear content
-        debugOverlaysContainer.style.transform = ''; // Reset transform
+        clearOverlays(debugOverlaysContainer); 
+        debugOverlaysContainer.style.transform = ''; 
         debugOverlaysContainer.style.width = '0px';
         debugOverlaysContainer.style.height = '0px';
     }
 
-     resetZoomPan(); // Reset zoom/pan values
+     resetZoomPan(); 
 
-     // Reset UI elements
-    // imageUploadInput.value = ''; // Keep file input value
-    processingStatusDiv.textContent = 'Upload an image to start.';
+     processingStatusDiv.textContent = 'Upload an image to start.';
 }
 
-
+// Clears the generated spritesheet
 function clearGeneratedSpritesheet() {
-    generatedSpritesheetCanvas = null; // Clear the stored canvas object
+    generatedSpritesheetCanvas = null; 
     if (spritesheetPreviewCanvas) {
         const ctx = spritesheetPreviewCanvas.getContext('2d');
-         // Reset size to avoid showing old large canvas visually
         spritesheetPreviewCanvas.width = 1;
         spritesheetPreviewCanvas.height = 1;
         ctx.clearRect(0, 0, 1, 1);
     }
-    downloadSpritesheetButton.disabled = true; // Disable download
+    downloadSpritesheetButton.disabled = true; 
      console.log("Spritesheet cleared.");
 }
 
-
-// Utility to pause execution slightly to allow UI updates (use sparingly)
+// Utility to pause execution slightly to allow UI updates 
 function wait(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
