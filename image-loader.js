@@ -1,14 +1,14 @@
 /**
- * Handles image loading from user input.
- * @param {HTMLInputElement} fileInput - The file input element.
+ * Handles image loading from a File object.
+ * @param {File} file - The image file object selected by the user.
  * @param {HTMLCanvasElement} canvas - The canvas element to draw the preview on.
  * @returns {Promise<{img: HTMLImageElement, naturalWidth: number, naturalHeight: number}>} A promise that resolves with the loaded image element and its natural dimensions.
  */
-export async function loadImage(fileInput, canvas) {
+export async function loadImageFromFile(file, canvas) {
     return new Promise((resolve, reject) => {
-        const file = fileInput.files[0];
+        // File object is now passed directly
         if (!file) {
-            reject(new Error("No file selected."));
+            reject(new Error("No file provided to loadImageFromFile."));
             return;
         }
         // Basic type check
@@ -47,7 +47,7 @@ export async function loadImage(fileInput, canvas) {
             console.error("File reader error:", err);
             reject(new Error("Failed to read the selected file."));
         };
-        reader.readAsDataURL(file);
+        reader.readAsDataURL(file); // Read the File object directly
     });
 }
 
