@@ -1,7 +1,7 @@
 import { elements } from 'dom-elements';
 import { appState, setGeneratedSpritesheet, clearGeneratedSpritesheetState } from 'state';
 import { generateSpritesheet, downloadCanvasAsPNG } from 'spritesheet-generator';
-import { disableAllControls } from 'ui-controller'; // Keep for disabling during generation
+import { disableAllControls } from 'ui-controller';
 
 export function initSpritesheetController() {
     elements.gridColsInput.addEventListener('change', handleSpritesheetSettingsChange);
@@ -21,33 +21,34 @@ function handleSpritesheetSettingsChange() {
 
 // Generates and displays the spritesheet using selected sprites
 async function handleGenerateSpritesheet() {
-    // Use selectedSpritesForSheet which now holds the actual sprite objects in the desired order
     const spritesToInclude = appState.selectedSpritesForSheet;
 
     if (spritesToInclude.length === 0) {
         alert("No sprites selected for the spritesheet. Please add sprites to the 'Selected for Sheet' panel first.");
         return;
     }
-    if (!appState.originalImageData) {
-        alert("Original image data is missing. Please re-upload.");
+
+    // Check if all selected sprites have valid sourceImageData
+    const missingData = spritesToInclude.some(s => !s.sourceImageData);
+    if (missingData) {
+        alert("Error: Some selected sprites are missing their source image data. Cannot generate spritesheet.");
+        console.error("Cannot generate spritesheet: Missing sourceImageData in selectedSpritesForSheet", spritesToInclude.filter(s => !s.sourceImageData));
         return;
     }
+
 
     console.log(`Generating spritesheet with ${spritesToInclude.length} selected sprites...`);
     elements.processingStatusDiv.textContent = 'Generating spritesheet...';
     disableAllControls(true);
-
-    // Extract just the blob data needed for generation
-    const blobsToInclude = spritesToInclude.map(spriteData => spriteData.blob);
 
     const cols = parseInt(elements.gridColsInput.value, 10) || 8;
     const padding = parseInt(elements.paddingInput.value, 10) || 0;
     const alignment = elements.alignmentSelect.value;
 
     try {
+        // Pass the list of selected sprite objects, including their source data
         const resultCanvas = await generateSpritesheet(
-            appState.originalImageData,
-            blobsToInclude, // Pass the list of blob objects
+            spritesToInclude,
             cols,
             padding,
             alignment
@@ -62,7 +63,7 @@ async function handleGenerateSpritesheet() {
         previewCtx.clearRect(0, 0, resultCanvas.width, resultCanvas.height);
         previewCtx.drawImage(resultCanvas, 0, 0);
 
-        elements.processingStatusDiv.textContent = `Spritesheet generated (${blobsToInclude.length} sprites). Ready to download.`;
+        elements.processingStatusDiv.textContent = `Spritesheet generated (${spritesToInclude.length} sprites). Ready to download.`;
         elements.downloadSpritesheetButton.disabled = false;
         console.log("Spritesheet generation and preview complete.");
 
@@ -84,19 +85,18 @@ function handleDownloadSpritesheet() {
     }
     console.log("Preparing spritesheet download...");
     let filename = 'spritcher_spritesheet.png';
-    // Keep existing filename logic...
-    if (elements.imageUploadInput.files && elements.imageUploadInput.files[0]) {
-        const originalName = elements.imageUploadInput.files[0].name;
-        const baseName = originalName.substring(0, originalName.lastIndexOf('.')) || originalName;
-        filename = `${baseName}_spritesheet.png`;
-    } else if (appState.originalImageInfo && appState.originalImageInfo.img.src) {
-         try {
-            const url = new URL(appState.originalImageInfo.img.src);
-            const pathnameParts = url.pathname.split('/');
-            const originalName = pathnameParts[pathnameParts.length - 1];
+    // Try to derive name from the first selected sprite's source ID?
+    if (appState.selectedSpritesForSheet.length > 0) {
+         const firstSourceId = appState.selectedSpritesForSheet[0].sourceImageId;
+         // Attempt to extract original filename part
+         const nameParts = firstSourceId.split('-');
+         if (nameParts.length > 2) { // Check if it looks like our generated ID format
+             const originalName = nameParts.slice(0, -2).join('-'); // Rejoin potentially hyphenated names
              const baseName = originalName.substring(0, originalName.lastIndexOf('.')) || originalName;
-             filename = `${baseName}_spritesheet.png`;
-         } catch (e) {/* Ignore error if src is not a valid URL (e.g., data URL) */}
+             if (baseName && baseName !== 'unknown') {
+                 filename = `${baseName}_spritesheet.png`;
+             }
+         }
     }
 
 
@@ -108,13 +108,11 @@ export function clearGeneratedSpritesheet() {
     clearGeneratedSpritesheetState(); // Clear state
     if (elements.spritesheetPreviewCanvas) {
         const ctx = elements.spritesheetPreviewCanvas.getContext('2d');
-        // Ensure width/height are > 0 to avoid errors
         const w = elements.spritesheetPreviewCanvas.width || 1;
         const h = elements.spritesheetPreviewCanvas.height || 1;
         elements.spritesheetPreviewCanvas.width = w;
         elements.spritesheetPreviewCanvas.height = h;
         ctx.clearRect(0, 0, w, h);
-        // Reset to small size to visually clear it if needed
         elements.spritesheetPreviewCanvas.width = 1;
         elements.spritesheetPreviewCanvas.height = 1;
     }

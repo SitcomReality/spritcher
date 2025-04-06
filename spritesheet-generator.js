@@ -1,29 +1,31 @@
 /**
- * Calculates spritesheet dimensions and cell layout details based on blobs and settings.
+ * Calculates spritesheet dimensions and cell layout details based on selected sprites and settings.
  * Does not draw anything.
- * @param {Array<Object>} blobs - Array of blob objects with { bounds: { width, height } }.
+ * @param {Array<Object>} selectedSprites - Array of selected sprite objects { blob: { bounds: { width, height } } }.
  * @param {number} cols - Number of columns in the grid.
  * @param {number} padding - Padding around each sprite within its cell.
- * @returns { { sheetWidth: number, sheetHeight: number, cellWidth: number, cellHeight: number, numRows: number, maxSpriteWidth: number, maxSpriteHeight: number } | null } Layout details or null if no blobs.
+ * @returns { { sheetWidth: number, sheetHeight: number, cellWidth: number, cellHeight: number, numRows: number, maxSpriteWidth: number, maxSpriteHeight: number } | null } Layout details or null if no sprites.
  */
-export function calculateSpritesheetLayout(blobs, cols, padding) {
-     if (!blobs || blobs.length === 0) {
+export function calculateSpritesheetLayout(selectedSprites, cols, padding) {
+    if (!selectedSprites || selectedSprites.length === 0) {
         return null;
     }
 
-    // Determine max sprite width and height
+    // Determine max sprite width and height from the selected sprites
     let maxSpriteWidth = 0;
     let maxSpriteHeight = 0;
-    blobs.forEach(blob => {
-        if (blob.bounds.width > maxSpriteWidth) maxSpriteWidth = blob.bounds.width;
-        if (blob.bounds.height > maxSpriteHeight) maxSpriteHeight = blob.bounds.height;
+    selectedSprites.forEach(spriteData => {
+        const width = spriteData.blob.bounds.width;
+        const height = spriteData.blob.bounds.height;
+        if (width > maxSpriteWidth) maxSpriteWidth = width;
+        if (height > maxSpriteHeight) maxSpriteHeight = height;
     });
 
     // Cell dimensions include the sprite and padding on both sides
     const cellWidth = maxSpriteWidth + padding * 2;
     const cellHeight = maxSpriteHeight + padding * 2;
 
-    const numRows = Math.ceil(blobs.length / cols);
+    const numRows = Math.ceil(selectedSprites.length / cols);
     const sheetWidth = cols * cellWidth;
     const sheetHeight = numRows * cellHeight;
 
@@ -41,25 +43,24 @@ export function calculateSpritesheetLayout(blobs, cols, padding) {
 
 /**
  * Generates the final spritesheet image data on a target canvas.
- * Creates a new canvas internally to draw on.
+ * Creates a new canvas internally to draw on. Handles sprites from multiple source images.
  *
- * @param {ImageData} originalImageData - The ImageData of the original uploaded image.
- * @param {Array<Object>} blobs - Array of blob objects with { id, bounds: { minX, minY, width, height } }.
+ * @param {Array<Object>} selectedSpritesForSheet - Array of sprite objects { uniqueId, blob, sourceImageData, sourceImageId }.
  * @param {number} cols - Number of columns in the grid.
  * @param {number} padding - Padding between sprites in pixels.
  * @param {string} alignment - Sprite alignment within cells ('top-left', 'center').
  * @returns {Promise<HTMLCanvasElement>} A promise that resolves with the canvas containing the generated spritesheet.
  */
-export async function generateSpritesheet(originalImageData, blobs, cols, padding, alignment) {
+export async function generateSpritesheet(selectedSpritesForSheet, cols, padding, alignment) {
     return new Promise(async (resolve, reject) => {
-        if (!blobs || blobs.length === 0 || !originalImageData) {
-            reject(new Error("Cannot generate spritesheet: Missing blobs or original image data."));
+        if (!selectedSpritesForSheet || selectedSpritesForSheet.length === 0) {
+            reject(new Error("Cannot generate spritesheet: No sprites selected."));
             return;
         }
 
-        const layout = calculateSpritesheetLayout(blobs, cols, padding);
+        const layout = calculateSpritesheetLayout(selectedSpritesForSheet, cols, padding);
         if (!layout) {
-             reject(new Error("Cannot generate spritesheet: No blobs provided."));
+            reject(new Error("Cannot generate spritesheet: Layout calculation failed."));
             return;
         }
 
@@ -70,19 +71,51 @@ export async function generateSpritesheet(originalImageData, blobs, cols, paddin
         targetCanvas.width = sheetWidth;
         targetCanvas.height = sheetHeight;
         const ctx = targetCanvas.getContext('2d');
-        ctx.clearRect(0, 0, sheetWidth, sheetHeight); // Clear just in case
+        ctx.clearRect(0, 0, sheetWidth, sheetHeight);
 
-        // Create a temporary source canvas for efficient cropping (putImageData once)
-        const sourceCanvas = document.createElement('canvas');
-        sourceCanvas.width = originalImageData.width;
-        sourceCanvas.height = originalImageData.height;
-        const sourceCtx = sourceCanvas.getContext('2d');
-        sourceCtx.putImageData(originalImageData, 0, 0);
+        // --- Create temporary source canvases for each unique source image ---
+        const sourceCanvases = new Map();
+        for (const spriteData of selectedSpritesForSheet) {
+            const { sourceImageId, sourceImageData } = spriteData;
+            if (!sourceCanvases.has(sourceImageId)) {
+                if (!sourceImageData || !sourceImageData.width || !sourceImageData.height) {
+                    console.warn(`Skipping sprites from source ${sourceImageId} due to missing or invalid ImageData.`);
+                    // Optionally draw placeholders for sprites from this source later?
+                    continue; // Skip creating canvas for this invalid source
+                }
+                try {
+                    const sourceCanvas = document.createElement('canvas');
+                    sourceCanvas.width = sourceImageData.width;
+                    sourceCanvas.height = sourceImageData.height;
+                    sourceCanvas.getContext('2d', { willReadFrequently: true }).putImageData(sourceImageData, 0, 0);
+                    sourceCanvases.set(sourceImageId, sourceCanvas);
+                    console.log(`Created temp source canvas for ${sourceImageId} (${sourceImageData.width}x${sourceImageData.height})`);
+                } catch (e) {
+                    console.error(`Failed to create temp source canvas for ${sourceImageId}:`, e);
+                    // Mark this source as invalid?
+                }
+
+            }
+        }
+        // --- End source canvas creation ---
+
 
         console.log(`Generating ${cols}x${layout.numRows} spritesheet (${sheetWidth}x${sheetHeight}px), cell: ${cellWidth}x${cellHeight}px`);
 
+        selectedSpritesForSheet.forEach((spriteData, index) => {
+            const { blob, sourceImageId, uniqueId } = spriteData;
+            const bounds = blob.bounds;
 
-        blobs.forEach((blob, index) => {
+            // Get the correct source canvas for this sprite
+            const sourceCanvas = sourceCanvases.get(sourceImageId);
+            if (!sourceCanvas) {
+                console.warn(`Skipping sprite ${uniqueId} - could not find or create source canvas for ${sourceImageId}.`);
+                // Optionally draw a placeholder on the target sheet
+                // drawPlaceholder(ctx, cellX, cellY, cellWidth, cellHeight, "Missing Source");
+                return; // Skip this sprite
+            }
+
+
             const row = Math.floor(index / cols);
             const col = index % cols;
 
@@ -95,27 +128,28 @@ export async function generateSpritesheet(originalImageData, blobs, cols, paddin
             let spriteDestY = cellY + padding;
 
             if (alignment === 'center') {
-                spriteDestX += Math.floor((maxSpriteWidth - blob.bounds.width) / 2);
-                spriteDestY += Math.floor((maxSpriteHeight - blob.bounds.height) / 2);
+                spriteDestX += Math.floor((maxSpriteWidth - bounds.width) / 2);
+                spriteDestY += Math.floor((maxSpriteHeight - bounds.height) / 2);
             }
 
-            // Ensure source coordinates and dimensions are valid
-            const sourceX = Math.max(0, blob.bounds.minX);
-            const sourceY = Math.max(0, blob.bounds.minY);
+            // Ensure source coordinates and dimensions are valid within the specific source canvas
+            const sourceX = Math.max(0, bounds.minX);
+            const sourceY = Math.max(0, bounds.minY);
             // Clamp width/height to prevent reading outside source image bounds
-            const sourceWidth = Math.min(blob.bounds.width, originalImageData.width - sourceX);
-            const sourceHeight = Math.min(blob.bounds.height, originalImageData.height - sourceY);
+            const sourceWidth = Math.min(bounds.width, sourceCanvas.width - sourceX);
+            const sourceHeight = Math.min(bounds.height, sourceCanvas.height - sourceY);
 
 
-             if (sourceWidth <= 0 || sourceHeight <= 0) {
-                 console.warn(`Skipping blob ${blob.id || index} due to invalid source dimensions after clamping: w=${sourceWidth}, h=${sourceHeight} at [${sourceX}, ${sourceY}]`);
-                 return; // Skip drawing this blob if dimensions are invalid
-             }
+            if (sourceWidth <= 0 || sourceHeight <= 0) {
+                console.warn(`Skipping sprite ${uniqueId} due to invalid source dimensions after clamping: w=${sourceWidth}, h=${sourceHeight} at [${sourceX}, ${sourceY}] on source ${sourceImageId}`);
+                // drawPlaceholder(ctx, spriteDestX, spriteDestY, bounds.width, bounds.height, "Invalid Bounds");
+                return; // Skip drawing this blob if dimensions are invalid
+            }
 
             try {
-                // Draw the specific sprite region from the source canvas to the target spritesheet canvas
+                // Draw the specific sprite region from the correct source canvas to the target spritesheet canvas
                 ctx.drawImage(
-                    sourceCanvas, // Source: temporary canvas with original image data
+                    sourceCanvas, // Source: temporary canvas for this sprite's original image
                     sourceX,      // Source rectangle X
                     sourceY,      // Source rectangle Y
                     sourceWidth,  // Source rectangle Width
@@ -126,13 +160,15 @@ export async function generateSpritesheet(originalImageData, blobs, cols, paddin
                     sourceHeight  // Destination Height (use actual sprite height)
                 );
             } catch (e) {
-                 // Log detailed error information
-                 console.error(`Error drawing sprite ${blob.id || index} from source [${sourceX},${sourceY} ${sourceWidth}x${sourceHeight}] to dest [${spriteDestX},${spriteDestY}]:`, e);
-                 // Optionally, draw a placeholder or skip
+                console.error(`Error drawing sprite ${uniqueId} from source ${sourceImageId} [${sourceX},${sourceY} ${sourceWidth}x${sourceHeight}] to dest [${spriteDestX},${spriteDestY}]:`, e);
+                // Optionally, draw a placeholder
+                // drawPlaceholder(ctx, spriteDestX, spriteDestY, sourceWidth, sourceHeight, "Draw Error");
             }
         });
 
-         console.log("Spritesheet generation complete.");
+        console.log("Spritesheet generation complete.");
+        // Clean up temporary canvases? Not strictly necessary as they are local vars.
+        sourceCanvases.clear();
         resolve(targetCanvas); // Resolve with the canvas element itself
     });
 }
@@ -154,16 +190,13 @@ export function downloadCanvasAsPNG(canvas, filename = 'spritesheet.png') {
         const link = document.createElement('a');
         link.href = dataURL;
         link.download = filename;
-        // Append, click, and remove the link
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
-         console.log(`Download triggered for ${filename}`);
+        console.log(`Download triggered for ${filename}`);
     } catch (e) {
-         console.error("Error creating data URL or triggering download:", e);
-         alert(`Failed to initiate download. Error: ${e.message}`);
-         // This could happen if the canvas is too large (browser limits on data URL length)
-         // or if the canvas is tainted (though unlikely with File API).
+        console.error("Error creating data URL or triggering download:", e);
+        alert(`Failed to initiate download. Error: ${e.message}`);
     }
 
 }

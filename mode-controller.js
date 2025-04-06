@@ -54,8 +54,15 @@ export function setEditModeAndClearSelection(newMode) {
 
 export function updateEditModeUI() {
     const hasImage = !!appState.originalImageInfo;
+    // Use detectedBlobs (current image's blobs) for enabling editing tools
     const hasBlobs = appState.detectedBlobs && appState.detectedBlobs.length > 0;
-    const isBlobSelected = appState.editing.selectedBlobIndex !== null;
+    const selectedIndex = appState.editing.selectedBlobIndex;
+    const isBlobSelected = selectedIndex !== null;
+
+    // Check if the selected blob belongs to the currently loaded image
+    const isSelectedBlobFromCurrentImage = isBlobSelected &&
+        appState.detectedBlobs[selectedIndex]?.sourceImageId === appState.currentSourceImageId;
+
     const currentMode = appState.editing.currentEditMode;
 
     elements.editModeButtons.forEach(button => {
@@ -63,11 +70,13 @@ export function updateEditModeUI() {
         let disabled = false;
 
         if (!hasImage) {
-            disabled = true; // Disable all if no image
-        } else if ((mode === 'select' || mode === 'edit-bounds') && !hasBlobs) {
-            disabled = true; // Select/Edit require blobs
-        } else if (mode === 'edit-bounds' && !isBlobSelected) {
-            disabled = true; // Edit requires selection
+            disabled = true; // Disable all if no image currently loaded
+        } else if ((mode === 'select' || mode === 'edit-bounds' || mode === 'add') && !hasBlobs) {
+            // Select, Edit, Add require blobs detected *in the current image*
+            disabled = true;
+        } else if (mode === 'edit-bounds' && !isSelectedBlobFromCurrentImage) {
+            // Edit requires selection OF A BLOB FROM THE CURRENT IMAGE
+            disabled = true;
         } else if (mode === 'split' || mode === 'merge') {
              disabled = true; // Unimplemented
         }
@@ -76,8 +85,9 @@ export function updateEditModeUI() {
         button.classList.toggle('active', mode === currentMode && !disabled);
     });
 
-    // Special handling for delete button (might move to delete-controller if it grows)
-    elements.deleteSelectedButton.disabled = !hasImage || !hasBlobs || !isBlobSelected;
+    // Special handling for delete button
+    // Enable only if a blob from the CURRENT image is selected
+    elements.deleteSelectedButton.disabled = !hasImage || !hasBlobs || !isSelectedBlobFromCurrentImage;
 
     updateContainerCursor();
 }
@@ -85,21 +95,28 @@ export function updateEditModeUI() {
 function updateEditingStatus() {
     const { currentEditMode, selectedBlobIndex } = appState.editing;
     const isBlobSelected = selectedBlobIndex !== null;
+    const isSelectedBlobFromCurrentImage = isBlobSelected &&
+        appState.detectedBlobs[selectedBlobIndex]?.sourceImageId === appState.currentSourceImageId;
+
     let status = `Mode: ${currentEditMode.toUpperCase()}. `;
 
     switch (currentEditMode) {
         case 'select':
             status += isBlobSelected
-                ? `Sprite ${selectedBlobIndex} selected. Click another box or empty space.`
-                : `Click on a blue box to select a sprite.`;
+                ? `Sprite Index ${selectedBlobIndex} (current image) selected. Click another box or empty space.`
+                : `Click on a blue box (from current image) to select it.`;
             break;
         case 'pan':
             status += 'Click & drag to pan, use wheel or buttons to zoom.';
             break;
         case 'edit-bounds':
-            status += isBlobSelected
-                ? `Selected Sprite ${selectedBlobIndex}. Drag handles to resize.`
-                : 'Select a sprite first (use Select mode).';
+             if (isSelectedBlobFromCurrentImage) {
+                status += `Selected Sprite ${selectedBlobIndex}. Drag handles to resize.`;
+             } else if (isBlobSelected) {
+                status += `Sprite ${selectedBlobIndex} selected, but not from current image. Cannot edit bounds.`;
+             } else {
+                status += 'Select a sprite from the current image first (use Select mode).';
+             }
             break;
         case 'add':
             status += 'Click and drag on the image to draw a new sprite box.';
@@ -123,20 +140,31 @@ function updateContainerCursor() {
     container.classList.remove('pan-mode', 'select-mode', 'add-mode', 'grabbing');
     container.style.cursor = 'default'; // Reset cursor
 
+    // Cursors depend only on mode, not selection source
     switch (appState.editing.currentEditMode) {
         case 'pan':
             container.classList.add('pan-mode');
             // 'grabbing' class is added/removed by viewport controller during pan
             break;
         case 'select':
-            container.classList.add('select-mode');
+             // Only allow selection pointer if blobs exist in current image
+             if (appState.detectedBlobs.length > 0) {
+                container.classList.add('select-mode');
+             } else {
+                 container.style.cursor = 'default';
+             }
             break;
         case 'edit-bounds':
             // Cursor is handled by the handles themselves via CSS
             container.style.cursor = 'default';
             break;
         case 'add':
-            container.classList.add('add-mode');
+             // Allow add cursor only if image is loaded
+             if (appState.originalImageData) {
+                 container.classList.add('add-mode');
+             } else {
+                  container.style.cursor = 'default';
+             }
             break;
     }
      // Ensure grabbing cursor is applied if panning

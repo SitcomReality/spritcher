@@ -2,6 +2,9 @@ import { elements } from 'dom-elements';
 import { appState, addSpriteToSelection, removeSpriteFromSelection, clearSelectedSprites, addAllAvailableSpritesToSelection } from 'state';
 import { clearGeneratedSpritesheet } from 'spritesheet-controller';
 
+// Cache for temporary source canvases used for previews
+const previewSourceCanvasCache = new Map();
+
 export function initExtractedSpritesController() {
     elements.availableSpritesDisplayContainer.addEventListener('click', handleAvailableSpriteClick);
     elements.selectedSpritesDisplayContainer.addEventListener('click', handleSelectedSpriteClick);
@@ -14,6 +17,8 @@ export function initExtractedSpritesController() {
  * Renders both the 'Available' and 'Selected' sprite panels.
  */
 export function displayExtractedSprites() {
+    // Clear cache when re-rendering previews
+    previewSourceCanvasCache.clear();
     displayAvailableSprites();
     displaySelectedSprites();
     updateSelectionCounts(); // Update counts after rendering both
@@ -22,22 +27,35 @@ export function displayExtractedSprites() {
 
 /**
  * Renders sprites from appState.extractedSprites into the 'Available' panel.
+ * These sprites are always from the currently loaded image.
  */
 function displayAvailableSprites() {
     const container = elements.availableSpritesDisplayContainer;
     container.innerHTML = ''; // Clear previous content
 
     if (!appState.originalImageInfo || appState.extractedSprites.length === 0) {
-        container.innerHTML = "<p>No sprites detected or image not loaded.</p>";
+        container.innerHTML = "<p>No sprites detected in the current image.</p>";
+        updateSelectionCounts(); // Ensure count is updated even if empty
+        updateButtonStates();
         return;
     }
 
+    // Use the main image preview canvas as the source for available sprites
     const sourceCanvas = elements.imagePreviewCanvas;
+    const sourceImageData = appState.originalImageData; // Get current image data
+
+    if (!sourceImageData) {
+        console.error("Cannot display available sprites: Missing original image data in state.");
+        container.innerHTML = "<p>Error: Missing source image data.</p>";
+        return;
+    }
+
     const fragment = document.createDocumentFragment();
     const selectedIds = new Set(appState.selectedSpritesForSheet.map(s => s.uniqueId)); // Cache selected IDs
 
     appState.extractedSprites.forEach((spriteData, index) => {
-        const itemDiv = createPreviewItemElement(spriteData, sourceCanvas, index);
+        // Pass the current image's ImageData as the source
+        const itemDiv = createPreviewItemElement(spriteData, sourceImageData, index);
         itemDiv.dataset.spriteId = spriteData.uniqueId; // Store unique ID for click handling
 
         // Add class if this sprite is already in the selected list
@@ -56,6 +74,7 @@ function displayAvailableSprites() {
 
 /**
  * Renders sprites from appState.selectedSpritesForSheet into the 'Selected' panel.
+ * These sprites can be from multiple source images.
  */
 function displaySelectedSprites() {
     const container = elements.selectedSpritesDisplayContainer;
@@ -63,24 +82,26 @@ function displaySelectedSprites() {
 
     if (appState.selectedSpritesForSheet.length === 0) {
         container.innerHTML = "<p>Add sprites from the 'Available' panel.</p>";
+        updateSelectionCounts(); // Ensure count is updated even if empty
+        updateButtonStates();
         return;
     }
 
-    const sourceCanvas = elements.imagePreviewCanvas; // Needed if we redraw from original
     const fragment = document.createDocumentFragment();
 
     appState.selectedSpritesForSheet.forEach((spriteData, index) => {
-        // Note: 'index' here is the index within the selectedSpritesForSheet array (order matters)
-        // spriteData.originalBlobIndex refers to its original position in detectedBlobs
-        const itemDiv = createPreviewItemElement(spriteData, sourceCanvas, spriteData.originalBlobIndex);
+        // Pass the specific sourceImageData stored with the selected sprite
+        const itemDiv = createPreviewItemElement(spriteData, spriteData.sourceImageData, spriteData.blob.id); // Use blob ID or original index if needed
         itemDiv.dataset.spriteId = spriteData.uniqueId; // Store unique ID for click handling
-        itemDiv.title = "Click to remove from selection"; // Tooltip for selected items
+        itemDiv.title = `Click to remove (from ${spriteData.sourceImageId.split('-')[0]})`; // Tooltip indication source
 
         // Add index label based on its *current* order in the selection
         const orderLabel = itemDiv.querySelector('.sprite-index-label');
         if(orderLabel) {
-            orderLabel.textContent = `Sheet Order: ${index + 1}`;
+            // Show sheet order and original ID/index for clarity
+             orderLabel.innerHTML = `Order: ${index + 1}<br><small>(Src ID: ${spriteData.blob.id ?? 'N/A'})</small>`;
         }
+
 
         fragment.appendChild(itemDiv);
     });
@@ -88,15 +109,17 @@ function displaySelectedSprites() {
     container.appendChild(fragment);
 }
 
+
 /**
  * Helper function to create a single sprite preview item DOM element.
- * @param {object} spriteData - The sprite data object { blob, uniqueId, originalBlobIndex }.
- * @param {HTMLCanvasElement} sourceCanvas - The canvas containing the original image.
- * @param {number} labelIndex - The index to display on the label (usually originalBlobIndex for available, order index for selected).
+ * Uses a temporary canvas created from the provided sourceImageData.
+ * @param {object} spriteData - The sprite data object { blob, uniqueId, originalBlobIndex, sourceImageId }.
+ * @param {ImageData} sourceImageData - The ImageData of the source image for this sprite.
+ * @param {number | string} labelId - The ID or index to display on the label.
  * @returns {HTMLDivElement} The created preview item div.
  */
-function createPreviewItemElement(spriteData, sourceCanvas, labelIndex) {
-    const { blob } = spriteData;
+function createPreviewItemElement(spriteData, sourceImageData, labelId) {
+    const { blob, sourceImageId } = spriteData;
     const bounds = blob.bounds;
 
     const itemDiv = document.createElement('div');
@@ -112,17 +135,31 @@ function createPreviewItemElement(spriteData, sourceCanvas, labelIndex) {
     previewCanvas.height = canvasHeight;
 
     try {
+        if (!sourceImageData) throw new Error("Missing sourceImageData");
+
+        // --- Use a temporary source canvas for drawing ---
+        let tempSourceCanvas = previewSourceCanvasCache.get(sourceImageId);
+        if (!tempSourceCanvas) {
+            tempSourceCanvas = document.createElement('canvas');
+            tempSourceCanvas.width = sourceImageData.width;
+            tempSourceCanvas.height = sourceImageData.height;
+            tempSourceCanvas.getContext('2d', { willReadFrequently: true }).putImageData(sourceImageData, 0, 0);
+            previewSourceCanvasCache.set(sourceImageId, tempSourceCanvas);
+            // console.log(`Created preview source canvas for ${sourceImageId}`);
+        }
+        // ---
+
         // Use Math.round for source coordinates as well to avoid subpixel issues
         const sourceX = Math.max(0, Math.round(bounds.minX));
         const sourceY = Math.max(0, Math.round(bounds.minY));
         // Calculate source width/height based on rounded bounds, clamped to source canvas
-        const sourceWidth = Math.min(canvasWidth, sourceCanvas.width - sourceX);
-        const sourceHeight = Math.min(canvasHeight, sourceCanvas.height - sourceY);
+        const sourceWidth = Math.min(canvasWidth, tempSourceCanvas.width - sourceX);
+        const sourceHeight = Math.min(canvasHeight, tempSourceCanvas.height - sourceY);
 
         if (sourceWidth > 0 && sourceHeight > 0) {
-            // Draw image from source canvas
+            // Draw image from the TEMPORARY source canvas
             ctx.drawImage(
-                sourceCanvas,
+                tempSourceCanvas,
                 sourceX, sourceY, sourceWidth, sourceHeight,
                 0, 0, sourceWidth, sourceHeight // Draw at actual size onto preview canvas
             );
@@ -133,18 +170,20 @@ function createPreviewItemElement(spriteData, sourceCanvas, labelIndex) {
         }
 
     } catch (e) {
-        console.error(`Error drawing preview for sprite ${spriteData.uniqueId}:`, e);
+        console.error(`Error drawing preview for sprite ${spriteData.uniqueId} from source ${sourceImageId}:`, e);
         ctx.fillStyle = 'red'; // Error indicator
         ctx.fillRect(0, 0, canvasWidth, canvasHeight);
         ctx.fillStyle = 'white';
         ctx.font = '10px sans-serif';
-        ctx.fillText('ERR', 2, 10);
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('ERR', canvasWidth / 2, canvasHeight / 2);
     }
 
     const indexLabel = document.createElement('span');
     indexLabel.className = 'sprite-index-label';
-    // Use originalBlobIndex for initial label, might be overridden later for selected sprites
-    indexLabel.textContent = `ID: ${spriteData.originalBlobIndex}`;
+    // Use provided labelId (can be original index, blob ID, or selection order)
+    indexLabel.textContent = `ID: ${labelId}`;
 
     itemDiv.appendChild(previewCanvas);
     itemDiv.appendChild(indexLabel);
@@ -152,18 +191,26 @@ function createPreviewItemElement(spriteData, sourceCanvas, labelIndex) {
     return itemDiv;
 }
 
+
 /**
  * Clears both the available and selected sprite display areas.
  */
 export function clearExtractedSpritesDisplay() {
+     previewSourceCanvasCache.clear(); // Clear preview cache
     if (elements.availableSpritesDisplayContainer) {
-        elements.availableSpritesDisplayContainer.innerHTML = '<p>Click \'Detect Sprites\' to see individual sprites here.</p>';
+        elements.availableSpritesDisplayContainer.innerHTML = '<p>Click \'Detect Sprites\' after loading an image.</p>';
     }
     if (elements.selectedSpritesDisplayContainer) {
-        elements.selectedSpritesDisplayContainer.innerHTML = '<p>Add sprites from the \'Available\' panel.</p>';
+        // Only clear if there are truly no selected sprites overall
+        if (appState.selectedSpritesForSheet.length === 0) {
+            elements.selectedSpritesDisplayContainer.innerHTML = '<p>Add sprites from the \'Available\' panel.</p>';
+        } else {
+             // If sprites ARE selected, re-render them instead of showing placeholder
+             displaySelectedSprites();
+        }
     }
-    updateSelectionCounts(); // Reset counts
-    updateButtonStates(); // Reset buttons
+    updateSelectionCounts(); // Reset counts based on state
+    updateButtonStates(); // Reset buttons based on state
 }
 
 /**
@@ -176,7 +223,7 @@ function handleAvailableSpriteClick(event) {
     const spriteId = itemDiv.dataset.spriteId;
     if (!spriteId) return;
 
-    const added = addSpriteToSelection(spriteId);
+    const added = addSpriteToSelection(spriteId); // Adds sprite with current source image data
 
     if (added) {
         // Re-render both displays to update states (e.g., 'already-selected' class)
@@ -202,8 +249,8 @@ function handleSelectedSpriteClick(event) {
 
     if (removed) {
         // Re-render both displays
-        displayAvailableSprites();
-        displaySelectedSprites();
+        displayAvailableSprites(); // Update 'already-selected' status
+        displaySelectedSprites(); // Remove the item
         updateSelectionCounts();
         updateButtonStates();
         clearGeneratedSpritesheet(); // Selection changed, invalidate sheet
@@ -214,7 +261,7 @@ function handleSelectedSpriteClick(event) {
  * Handles the "Add All" button click.
  */
 function handleAddAllAvailable() {
-    addAllAvailableSpritesToSelection();
+    addAllAvailableSpritesToSelection(); // Adds only from current image's available list
     // Re-render both displays
     displayAvailableSprites();
     displaySelectedSprites();
@@ -227,10 +274,10 @@ function handleAddAllAvailable() {
  * Handles the "Remove All" button click.
  */
 function handleRemoveAllSelected() {
-    clearSelectedSprites();
+    clearSelectedSprites(); // Clears the entire selected list
     // Re-render both displays
-    displayAvailableSprites();
-    displaySelectedSprites();
+    displayAvailableSprites(); // Update 'already-selected' status
+    displaySelectedSprites(); // Show empty placeholder
     updateSelectionCounts();
     updateButtonStates();
     clearGeneratedSpritesheet(); // Selection changed, invalidate sheet
@@ -241,10 +288,10 @@ function handleRemoveAllSelected() {
  */
 function updateSelectionCounts() {
     if (elements.availableSpritesCountSpan) {
-        elements.availableSpritesCountSpan.textContent = `${appState.extractedSprites.length} sprites available.`;
+        elements.availableSpritesCountSpan.textContent = `${appState.extractedSprites.length} sprites available (current image).`;
     }
     if (elements.selectedSpritesCountSpan) {
-        elements.selectedSpritesCountSpan.textContent = `${appState.selectedSpritesForSheet.length} sprites selected.`;
+        elements.selectedSpritesCountSpan.textContent = `${appState.selectedSpritesForSheet.length} sprites selected (total).`;
     }
 }
 
@@ -252,15 +299,18 @@ function updateSelectionCounts() {
  * Updates the enabled/disabled state of buttons in the section.
  * EXPORT this function.
  */
-export function updateButtonStates() { 
+export function updateButtonStates() {
     const availableCount = appState.extractedSprites.length;
     const selectedCount = appState.selectedSpritesForSheet.length;
-    const allAvailableAreSelected = availableCount > 0 && appState.extractedSprites.every(avail =>
-        appState.selectedSpritesForSheet.some(sel => sel.uniqueId === avail.uniqueId)
-    );
+
+    // Calculate if all *currently available* sprites are already selected
+    const currentAvailableIds = new Set(appState.extractedSprites.map(s => s.uniqueId));
+    const selectedIds = new Set(appState.selectedSpritesForSheet.map(s => s.uniqueId));
+    const allCurrentAvailableAreSelected = availableCount > 0 && [...currentAvailableIds].every(id => selectedIds.has(id));
+
 
     if (elements.addAllAvailableButton) {
-        elements.addAllAvailableButton.disabled = (availableCount === 0 || allAvailableAreSelected);
+        elements.addAllAvailableButton.disabled = (availableCount === 0 || allCurrentAvailableAreSelected);
     }
     if (elements.removeAllSelectedButton) {
         elements.removeAllSelectedButton.disabled = (selectedCount === 0);
@@ -268,7 +318,8 @@ export function updateButtonStates() {
 
     // Update spritesheet generation button state based on *selected* sprites
     if(elements.generateSpritesheetButton) {
-        elements.generateSpritesheetButton.disabled = (selectedCount === 0 || !appState.originalImageData);
+        // Enable if sprites are selected, regardless of whether an image is currently loaded
+        elements.generateSpritesheetButton.disabled = (selectedCount === 0);
     }
     // Also update layout controls based on selection
     if (elements.gridColsInput) elements.gridColsInput.disabled = (selectedCount === 0);
