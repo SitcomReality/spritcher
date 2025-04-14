@@ -44,7 +44,7 @@
         </section>
 
         <section id="settings-section">
-            <h2>2. Detection Settings</h2>
+            <h2>2. Detection Settings & Actions</h2>
             <div class="setting">
                 <label for="threshold-type-select">Background Removal Method:</label>
                 <select id="threshold-type-select" title="Choose how to separate sprites from the background">
@@ -90,16 +90,15 @@
                 <label><input type="checkbox" id="show-ccl-checkbox" name="debug-view" title="Show each detected sprite area with a unique color (Connected Component Labels)"> Show CCL IDs</label>
                 <label><input type="checkbox" id="show-bboxes-checkbox" name="debug-overlay" title="Show blue bounding boxes around detected sprites (enable for editing)"> Show Sprite Boxes</label>
             </fieldset>
-        </section>
 
-        <section id="processing-section">
-            <h2>3. Detect Sprites</h2>
-            <button id="process-button" title="Apply settings and find sprite boundaries">Detect Sprites</button>
-            <div id="processing-status">Upload an image and adjust settings to start.</div>
+            <div class="action-row" style="margin-top: 20px; display: flex; align-items: center; gap: 15px; flex-wrap: wrap;">
+                <button id="process-button" title="Apply settings and find sprite boundaries">Detect Sprites</button>
+                <div id="processing-status">Upload an image and adjust settings to start.</div>
+            </div>
         </section>
 
         <section id="editing-tools-section" style="display: none;">
-            <h2>4. Sprite Editing Tools</h2> 
+            <h2>3. Sprite Editing Tools</h2> 
             <div id="edit-toolbar">
                 <button id="pan-mode-btn" class="edit-mode-btn active" data-mode="pan" title="Pan/Zoom Mode (Click+Drag to Pan, Wheel to Zoom)">Pan/Zoom</button>
                 <button id="select-mode-btn" class="edit-mode-btn" data-mode="select" title="Select Sprites (Click on a blue box)">Select</button>
@@ -111,7 +110,7 @@
         </section>
 
         <section id="extracted-sprites-section" style="display: none;">
-            <h2>5. Manage Sprites for Sheet</h2>
+            <h2>4. Manage Sprites for Sheet</h2>
 
             <div class="sprite-management-container">
                 <div class="sprite-panel available-sprites-panel">
@@ -124,18 +123,18 @@
                         <!-- Available sprite previews will be generated here by JS -->
                         <p>Click 'Detect Sprites' to see individual sprites here.</p>
                     </div>
-                     <div class="setting-hint">(Click on sprites above to add them to the 'Selected for Sheet' panel.)</div>
+                    <div class="setting-hint">(Click on sprites above to add them to the 'Selected for Sheet' panel.)</div>
                 </div>
 
                 <div class="sprite-panel selected-sprites-panel">
                     <h3>Selected for Sheet</h3>
                     <div class="extracted-sprites-toolbar">
                         <button id="remove-all-selected-btn" title="Remove all sprites from the sheet">Remove All</button>
-                         <span id="selected-sprites-count">0 sprites selected.</span>
+                        <span id="selected-sprites-count">0 sprites selected.</span>
                     </div>
                     <div id="selected-sprites-display" class="extracted-sprites-container selected-container">
                         <!-- Selected sprite previews will be generated here by JS -->
-                         <p>Add sprites from the 'Available' panel.</p>
+                        <p>Add sprites from the 'Available' panel.</p>
                     </div>
                     <div id="selected-sprites-stats" class="sprite-stats-display">
                         <!-- Stats will be populated by JS -->
@@ -147,7 +146,7 @@
         </section>
 
         <section id="spritesheet-section">
-            <h2>6. Generate & Download Spritesheet</h2> 
+            <h2>5. Generate & Download Spritesheet</h2> 
             <fieldset>
                 <legend>Spritesheet Layout</legend>
                 <div class="setting">
@@ -160,18 +159,18 @@
                     <span class="setting-hint">(px)</span>
                 </div>
                 <!-- NEW Cell Size Inputs -->
-                 <div class="setting">
+                <div class="setting">
                     <label for="cell-width-input">Cell Width:</label>
                     <input type="number" id="cell-width-input" min="1" placeholder="Auto" title="Width of each grid cell (pixels). Leave empty for automatic sizing based on largest sprite + padding.">
                     <button id="use-recommended-size-btn" class="small-btn" title="Set Cell Width/Height based on largest selected sprite + padding">Use Recommended</button>
                     <span class="setting-hint">(px)</span>
                 </div>
-                 <div class="setting">
+                <div class="setting">
                     <label for="cell-height-input">Cell Height:</label>
                     <input type="number" id="cell-height-input" min="1" placeholder="Auto" title="Height of each grid cell (pixels). Leave empty for automatic sizing.">
-                     <span class="setting-hint">(px)</span>
+                    <span class="setting-hint">(px)</span>
                 </div>
-                 <div class="setting-hint" style="margin-left: 190px;">(Leave Cell Width/Height empty to auto-size based on largest selected sprite and padding.)</div>
+                <div class="setting-hint" style="margin-left: 190px;">(Leave Cell Width/Height empty to auto-size based on largest selected sprite and padding.)</div>
                 <!-- END NEW Cell Size Inputs -->
 
                 <div class="setting">
@@ -181,7 +180,7 @@
                         <option value="center" selected>Center</option>
                         <option value="right">Right</option>
                     </select>
-                     <span class="setting-hint">(Sprite within cell)</span>
+                    <span class="setting-hint">(Sprite within cell)</span>
                 </div>
                 <div class="setting">
                     <label for="align-v-select">Vertical Align:</label>
@@ -190,9 +189,9 @@
                         <option value="center" selected>Center</option>
                         <option value="bottom">Bottom</option>
                     </select>
-                     <span class="setting-hint">(Sprite within cell)</span>
+                    <span class="setting-hint">(Sprite within cell)</span>
                 </div>
-                 <div class="setting-hint" style="margin-left: 190px;">(Sprites larger than the cell content area will be scaled down to fit.)</div>
+                <div class="setting-hint" style="margin-left: 190px;">(Sprites larger than the cell content area will be scaled down to fit.)</div>
             </fieldset>
 
             <button id="generate-spritesheet-button" title="Arrange the detected (and edited) sprites into a grid">Generate Spritesheet</button>
@@ -235,16 +234,12 @@
                         </ul>
                     </li>
                 </ul>
-            </section>
-
-            <section>
-                <h3>3. Detect Sprites</h3>
-                <p>Click the "Detect Sprites" button after adjusting settings. Spritcher will apply the processing steps and identify potential sprite boundaries based on your settings.</p>
+                <p><strong>Detect Sprites Button:</strong> Click this button (located at the bottom of the settings section) after adjusting settings. Spritcher will apply the processing steps and identify potential sprite boundaries based on your settings.</p>
                 <p>The found sprites will appear in the "Available Sprites" panel below, and blue boxes will appear on the image preview if "Show Sprite Boxes" is checked.</p>
             </section>
 
-             <section>
-                <h3>4. Sprite Editing Tools (Requires 'Show Sprite Boxes' enabled)</h3>
+            <section>
+                <h3>3. Sprite Editing Tools (Requires 'Show Sprite Boxes' enabled)</h3>
                 <p>Use these tools to refine the automatically detected sprite boundaries.</p>
                 <ul>
                     <li><strong>Pan/Zoom:</strong> (Default mode) Click and drag to pan the image, use the mouse wheel or zoom buttons to zoom.</li>
@@ -257,7 +252,7 @@
             </section>
 
             <section>
-                <h3>5. Manage Sprites for Sheet</h3>
+                <h3>4. Manage Sprites for Sheet</h3>
                 <p>This section lets you choose which detected sprites (potentially from multiple uploaded images) will be included in the final spritesheet.</p>
                 <ul>
                     <li><strong>Available Sprites:</strong> Shows previews of sprites detected in the <em>most recently processed image</em>.
@@ -278,7 +273,7 @@
             </section>
 
             <section>
-                <h3>6. Generate & Download Spritesheet</h3>
+                <h3>5. Generate & Download Spritesheet</h3>
                 <p>Configure the layout of your final spritesheet using the selected sprites.</p>
                 <ul>
                     <li><strong>Columns:</strong> How many sprites wide the sheet should be.</li>
@@ -289,12 +284,12 @@
                             <li>Enter specific values to force a uniform cell size. Sprites larger than the content area (Cell Size - Padding) will be scaled down to fit.</li>
                         </ul>
                     </li>
-                     <li><strong>Horizontal/Vertical Align:</strong> How sprites are positioned within their cell's content area if they are smaller than the available space.</li>
+                    <li><strong>Horizontal/Vertical Align:</strong> How sprites are positioned within their cell's content area if they are smaller than the available space.</li>
                 </ul>
                 <p>Click "Generate Spritesheet" to create the preview based on your selected sprites and layout settings. Once generated, click "Download Spritesheet" to save it as a PNG file.</p>
             </section>
 
-             <section>
+            <section>
                 <h3>Tips</h3>
                 <ul>
                     <li>Use the "Show Thresholded" view extensively to fine-tune the threshold settings – it's the most critical step for good detection.</li>
