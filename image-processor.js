@@ -2,7 +2,7 @@
  * Converts ImageData to grayscale.
  * Modifies the ImageData in place.
  * Uses the luminosity method: gray = 0.299*R + 0.587*G + 0.114*B
- * Preserves alpha channel.
+ * Preserves alpha channel. Transparent pixels remain transparent (and typically black).
  * @param {ImageData} imageData - The ImageData object to convert.
  */
 export function convertToGrayscale(imageData) {
@@ -66,13 +66,15 @@ export function getGrayscaleImageData(originalImageData) {
 }
 
 /**
- * Creates a new ImageData object representing the thresholded version of a grayscale image.
- * Does not modify the input grayscale ImageData.
+ * Creates a new ImageData object representing the thresholded version of a grayscale image,
+ * ensuring originally transparent pixels remain transparent black (background).
+ * Does not modify the input grayscale ImageData or original ImageData.
  * @param {ImageData} grayscaleImageData - The grayscale ImageData.
+ * @param {ImageData} originalImageData - The original ImageData (used for alpha mask).
  * @param {number} threshold - The threshold value (0-255).
- * @returns {ImageData} A new ImageData object with thresholded data (black/white).
+ * @returns {ImageData} A new ImageData object with thresholded data (black/white), respecting original transparency.
  */
-export function getThresholdedImageData(grayscaleImageData, threshold) {
+export function getThresholdedImageData(grayscaleImageData, originalImageData, threshold) {
     // Create a copy to avoid modifying the input grayscale data
     const thresholdedImageData = new ImageData(
         new Uint8ClampedArray(grayscaleImageData.data), // Copy data buffer
@@ -81,14 +83,28 @@ export function getThresholdedImageData(grayscaleImageData, threshold) {
     );
     // Apply threshold *to the copy*.
     applyThreshold(thresholdedImageData, threshold);
+
+    // Apply original image's transparency as a mask
+    const data = thresholdedImageData.data;
+    const originalData = originalImageData.data;
+    for (let i = 0; i < data.length; i += 4) {
+        if (originalData[i + 3] === 0) { // If original pixel was fully transparent
+            data[i] = 0;     // R = black
+            data[i + 1] = 0; // G = black
+            data[i + 2] = 0; // B = black
+            data[i + 3] = 0; // Alpha = transparent
+        }
+    }
+
     return thresholdedImageData;
 }
 
 /**
  * Applies adaptive thresholding (Mean method) to grayscale ImageData.
- * Modifies the ImageData in place. Transparent pixels remain transparent.
+ * Modifies the ImageData in place. Transparent pixels in the input remain transparent.
  * For each pixel, calculates the mean gray value of its neighborhood,
  * and thresholds based on (mean - C).
+ * Pixels that were originally transparent are NOT included in mean calculations.
  * @param {ImageData} grayscaleImageData - The grayscale ImageData object (will be modified).
  * @param {number} blockSize - Size of the pixel neighborhood (must be an odd integer >= 3).
  * @param {number} C - Constant subtracted from the calculated mean.
@@ -160,14 +176,16 @@ export function applyAdaptiveThreshold(grayscaleImageData, blockSize, C) {
 }
 
 /**
- * Creates a new ImageData object representing the adaptive thresholded version of a grayscale image.
- * Does not modify the input grayscale ImageData. Uses the Mean method.
+ * Creates a new ImageData object representing the adaptive thresholded version of a grayscale image,
+ * ensuring originally transparent pixels remain transparent black (background).
+ * Does not modify the input grayscale ImageData or original ImageData. Uses the Mean method.
  * @param {ImageData} grayscaleImageData - The grayscale ImageData.
+ * @param {ImageData} originalImageData - The original ImageData (used for alpha mask).
  * @param {number} blockSize - Size of the pixel neighborhood (odd integer >= 3).
  * @param {number} C - Constant subtracted from the mean.
- * @returns {ImageData} A new ImageData object with adaptive thresholded data (black/white).
+ * @returns {ImageData} A new ImageData object with adaptive thresholded data (black/white), respecting original transparency.
  */
-export function getAdaptiveThresholdedImageData(grayscaleImageData, blockSize, C) {
+export function getAdaptiveThresholdedImageData(grayscaleImageData, originalImageData, blockSize, C) {
     // Create a copy to avoid modifying the input grayscale data
     const thresholdedImageData = new ImageData(
         new Uint8ClampedArray(grayscaleImageData.data),
@@ -176,5 +194,18 @@ export function getAdaptiveThresholdedImageData(grayscaleImageData, blockSize, C
     );
     // Apply adaptive threshold *to the copy*.
     applyAdaptiveThreshold(thresholdedImageData, blockSize, C);
+
+    // Apply original image's transparency as a mask
+    const data = thresholdedImageData.data;
+    const originalData = originalImageData.data;
+    for (let i = 0; i < data.length; i += 4) {
+        if (originalData[i + 3] === 0) { // If original pixel was fully transparent
+            data[i] = 0;     // R = black
+            data[i + 1] = 0; // G = black
+            data[i + 2] = 0; // B = black
+            data[i + 3] = 0; // Alpha = transparent
+        }
+    }
+
     return thresholdedImageData;
 }

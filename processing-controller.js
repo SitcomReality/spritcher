@@ -6,7 +6,7 @@ import { clearGeneratedSpritesheet } from 'spritesheet-controller';
 import { clearOverlays, updateDebugView, updateDebugOverlays } from 'debug-controller';
 import { updateEditModeUI, setEditModeAndClearSelection } from 'mode-controller';
 import { disableAllControls } from 'ui-controller';
-import { displayExtractedSprites, clearExtractedSpritesDisplay } from 'extracted-sprites-controller'; // Import controller
+import { displayExtractedSprites, clearExtractedSpritesDisplay } from 'extracted-sprites-controller'; 
 
 // Utility to pause execution slightly to allow UI updates
 function wait(ms) {
@@ -50,21 +50,28 @@ export async function handleProcessImage() {
     // --- 2. Thresholding ---
     try {
         let thresholdedData;
+        // Make sure we have original image data for masking transparency
+        if (!appState.originalImageData) {
+            throw new Error("Original image data is missing, cannot apply transparency mask during thresholding.");
+        }
+
         switch (appState.currentThresholdSettings.type) {
             case 'manual':
                 thresholdedData = getThresholdedImageData(
                     appState.grayscaleImageData,
+                    appState.originalImageData, // Pass original data for transparency mask
                     appState.currentThresholdSettings.manualValue
                 );
-                console.log(`Generated manual thresholded data (T=${appState.currentThresholdSettings.manualValue}).`);
+                console.log(`Generated manual thresholded data (T=${appState.currentThresholdSettings.manualValue}) with transparency mask.`);
                 break;
             case 'adaptive-mean':
                 thresholdedData = getAdaptiveThresholdedImageData(
                     appState.grayscaleImageData,
+                    appState.originalImageData, // Pass original data for transparency mask
                     appState.currentThresholdSettings.adaptiveBlockSize,
                     appState.currentThresholdSettings.adaptiveC
                 );
-                console.log(`Generated adaptive mean thresholded data (Block=${appState.currentThresholdSettings.adaptiveBlockSize}, C=${appState.currentThresholdSettings.adaptiveC}).`);
+                console.log(`Generated adaptive mean thresholded data (Block=${appState.currentThresholdSettings.adaptiveBlockSize}, C=${appState.currentThresholdSettings.adaptiveC}) with transparency mask.`);
                 break;
             default:
                 throw new Error(`Unknown threshold type: ${appState.currentThresholdSettings.type}`);
@@ -88,6 +95,7 @@ export async function handleProcessImage() {
         if (!appState.thresholdedImageData) {
             throw new Error("Thresholding step failed, cannot perform CCL.");
         }
+        // findBlobs uses the thresholded data (which now respects original transparency)
         const result = findBlobs(appState.thresholdedImageData, minSize);
         setCCLResult(result); // This populates detectedBlobs, extractedSprites, and CLEARS selectedSpritesForSheet
     } catch (error) {
