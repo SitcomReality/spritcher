@@ -53,22 +53,38 @@ async function handleImageUpload(event) {
 
     try {
         const imageInfo = await loadImageFromFile(file, elements.imagePreviewCanvas);
-        const imageData = getImageDataFromCanvas(elements.imagePreviewCanvas);
+        const imageDataResult = getImageDataFromCanvas(elements.imagePreviewCanvas);
 
-        if (!imageData) {
+        if (!imageDataResult) {
             throw new Error("Could not get image pixel data after loading.");
         }
 
         // Set state for the new image, this preserves selectedSpritesForSheet
-        setOriginalImage(imageInfo, imageData, file);
+        setOriginalImage(imageInfo, imageDataResult.imageData, file);
 
         resetZoomPanStateAndView();
         updateOverlayContainerDimensions();
-        updateDebugView();
 
-        elements.processingStatusDiv.textContent = 'Image loaded. Adjust settings and click "Detect Sprites".';
+        // Handle transparency detection
+        if (appState.originalImageInfo.hasTransparency) {
+            console.log("Transparency detected in uploaded image. Setting manual threshold to 0.");
+            resetThresholdSettings(); // Reset threshold settings
+            syncThresholdSettingsToState();
+            syncNumberInputsToSliders();
+            updateThresholdSettingsUI();
+            setThresholdSettings({ manualValue: 0, type: 'manual' }); // Force manual mode and threshold 0
+            elements.processingStatusDiv.textContent = 'Image with transparency loaded. Manual threshold set to 0. Adjust settings and click "Detect Sprites".';
+        } else {
+            // Reset threshold to default if no transparency (optional, could preserve previous setting)
+            // Let's reset to default for simplicity.
+            resetThresholdSettings(); // Resets to manual 128
+            elements.processingStatusDiv.textContent = 'Image loaded. Adjust settings and click "Detect Sprites".';
+        }
+
         syncThresholdSettingsToState();
         syncNumberInputsToSliders();
+        updateThresholdSettingsUI(); // Update UI including hint visibility AFTER state changes
+        updateDebugView(); // Redraw canvas AFTER state is set
         updateMinSizeUI();
         disableAllControls(false); // Enable controls based on new state
         elements.editingToolsSection.style.display = 'none';

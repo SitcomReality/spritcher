@@ -38,6 +38,7 @@ function handleManualThresholdSliderChange() {
     setThresholdSettings({ manualValue: value });
     invalidateProcessing();
     elements.processingStatusDiv.textContent = "Manual threshold changed. Click 'Detect Sprites' to update results.";
+    updateThresholdSettingsUI(); // Update hint visibility
 }
 
 function handleManualThresholdNumberChange() {
@@ -48,6 +49,7 @@ function handleManualThresholdNumberChange() {
     setThresholdSettings({ manualValue: value });
     invalidateProcessing();
     elements.processingStatusDiv.textContent = "Manual threshold changed. Click 'Detect Sprites' to update results.";
+    updateThresholdSettingsUI(); // Update hint visibility
 }
 
 
@@ -97,6 +99,7 @@ function handleMinSizeNumberChange() {
 export function updateThresholdSettingsUI() {
     const settings = appState.currentThresholdSettings;
     const imageLoaded = !!appState.originalImageInfo;
+    const hasTransparency = appState.originalImageInfo?.hasTransparency ?? false;
 
     elements.manualThresholdSettingsDiv.classList.toggle('visible', settings.type === 'manual');
     elements.adaptiveThresholdSettingsDiv.classList.toggle('visible', settings.type.startsWith('adaptive-'));
@@ -111,6 +114,12 @@ export function updateThresholdSettingsUI() {
     elements.adaptiveBlocksizeInput.disabled = (!settings.type.startsWith('adaptive-') || !imageLoaded);
     elements.adaptiveCInput.disabled = (!settings.type.startsWith('adaptive-') || !imageLoaded);
     elements.thresholdTypeSelect.disabled = !imageLoaded;
+
+    // Show hint only if in manual mode, transparency exists, AND threshold is currently 0
+    if (elements.transparencyThresholdHint) {
+        const showHint = settings.type === 'manual' && hasTransparency && settings.manualValue === 0;
+        elements.transparencyThresholdHint.style.display = showHint ? 'block' : 'none';
+    }
 }
 
 export function updateMinSizeUI() {

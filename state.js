@@ -1,6 +1,6 @@
 // --- State Variables ---
 export let appState = {
-    originalImageInfo: null, // { img, naturalWidth, naturalHeight }
+    originalImageInfo: null, // { img, naturalWidth, naturalHeight, hasTransparency }
     originalImageData: null,
     currentSourceImageId: null, // Identifier for the currently loaded image (e.g., filename + timestamp)
     grayscaleImageData: null,
@@ -46,7 +46,12 @@ function generateSourceImageId(file) {
 
 // --- State Update Functions ---
 export function setOriginalImage(imgInfo, imgData, file) {
-    appState.originalImageInfo = imgInfo;
+    appState.originalImageInfo = {
+        img: imgInfo.img,
+        naturalWidth: imgInfo.naturalWidth,
+        naturalHeight: imgInfo.naturalHeight,
+        hasTransparency: imgInfo.hasTransparency // Store the flag
+    };
     appState.originalImageData = imgData;
     appState.currentSourceImageId = generateSourceImageId(file); 
     console.log("Current source image ID set to:", appState.currentSourceImageId);
@@ -118,7 +123,7 @@ export function setSelectedBlobIndex(index) {
 export function resetThresholdSettings() {
      appState.currentThresholdSettings = {
         type: 'manual',
-        manualValue: 128,
+        manualValue: 128, // Reset to default
         adaptiveBlockSize: 11,
         adaptiveC: 2
     };
@@ -242,7 +247,7 @@ export function clearProcessingResultsState() {
 
 export function clearFullAppState() {
      console.log("Clearing full app state.");
-     appState.originalImageInfo = null;
+     appState.originalImageInfo = null; // Reset object
      appState.originalImageData = null;
      appState.currentSourceImageId = null;
      appState.grayscaleImageData = null;

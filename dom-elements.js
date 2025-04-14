@@ -49,7 +49,8 @@ export const elements = {
     selectedSpritesDisplayContainer: null,
     selectedSpritesCountSpan: null,
     removeAllSelectedButton: null,
-    selectedSpritesStatsDiv: null, 
+    selectedSpritesStatsDiv: null,
+    transparencyThresholdHint: null,
     helpButton: null,
     helpDialog: null,
     helpCloseButton: null,
@@ -106,6 +107,7 @@ export function populateElements() {
     elements.selectedSpritesCountSpan = document.getElementById('selected-sprites-count');
     elements.removeAllSelectedButton = document.getElementById('remove-all-selected-btn');
     elements.selectedSpritesStatsDiv = document.getElementById('selected-sprites-stats');
+    elements.transparencyThresholdHint = document.getElementById('transparency-threshold-hint');
     elements.helpButton = document.getElementById('help-button');
     elements.helpDialog = document.getElementById('help-dialog');
     elements.helpCloseButton = document.getElementById('help-close-button');
