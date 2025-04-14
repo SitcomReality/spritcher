@@ -1,6 +1,6 @@
 import { loadImageFromFile, getImageDataFromCanvas } from 'image-loader';
 import { elements, populateElements } from 'dom-elements';
-import { appState, setOriginalImage, clearFullAppState, resetThresholdSettings, clearProcessingResultsState } from 'state';
+import { appState, setOriginalImage, clearFullAppState, resetThresholdSettings, clearProcessingResultsState, setThresholdSettings } from 'state';
 import { initSettingsController, updateThresholdSettingsUI, updateMinSizeUI, syncThresholdSettingsToState, syncNumberInputsToSliders } from 'settings-controller';
 import { initProcessingController, clearProcessingOnLoad } from 'processing-controller';
 import { initSpritesheetController, clearGeneratedSpritesheet } from 'spritesheet-controller';
