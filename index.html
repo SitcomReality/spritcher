@@ -28,81 +28,79 @@
     <div class="app-container">
         <h1>Spritcher <small>Sprite Sheet Extractor</small></h1>
 
-        <section id="upload-section">
-            <h2>1. Upload Image</h2>
-            <label for="image-upload">Select an image file (PNG, JPG, GIF, etc.):</label>
-            <input type="file" id="image-upload" accept="image/*" title="Choose the image containing the sprites you want to extract">
-            <div id="image-preview-container">
-                <canvas id="image-preview-canvas"></canvas>
-                <div id="debug-overlays"></div>
+        <!-- Combined Upload and Settings Section -->
+        <section id="setup-section" class="setup-panel">
+            <div class="setup-column upload-column">
+                <h2>1. Upload Image</h2>
+                <label for="image-upload">Select an image file (PNG, JPG, GIF, etc.):</label>
+                <input type="file" id="image-upload" accept="image/*" title="Choose the image containing the sprites you want to extract">
+                <div id="image-preview-container">
+                    <canvas id="image-preview-canvas"></canvas>
+                    <div id="debug-overlays"></div>
+                </div>
+                <div class="zoom-controls">
+                    <button id="zoom-in-button" title="Zoom In">+</button>
+                    <button id="zoom-out-button" title="Zoom Out">-</button>
+                    <span class="setting-hint">Tip: Use mouse wheel to zoom</span>
+                </div>
             </div>
-            <div class="zoom-controls">
-                <button id="zoom-in-button" title="Zoom In">+</button>
-                <button id="zoom-out-button" title="Zoom Out">-</button>
-                <span class="setting-hint">Tip: Use mouse wheel to zoom</span>
+
+            <div class="setup-column settings-column">
+                <h2>2. Detection Settings & Actions</h2>
+                <div class="setting">
+                    <label for="threshold-type-select">Background Removal:</label>
+                    <select id="threshold-type-select" title="Choose how to separate sprites from the background">
+                        <option value="manual" selected>Manual Threshold</option>
+                        <option value="adaptive-mean">Adaptive Threshold (Mean)</option>
+                    </select>
+                    <span class="setting-hint">(Try Adaptive if lighting is uneven)</span>
+                </div>
+
+                <div id="manual-threshold-settings" class="threshold-settings-group visible">
+                    <div class="setting">
+                        <label for="threshold-slider">Threshold Level:</label>
+                        <input type="range" id="threshold-slider" min="0" max="255" value="128" title="Adjust sensitivity for background removal (lower = more sensitive)">
+                        <input type="number" id="threshold-number-input" min="0" max="255" value="128" style="width: 60px; text-align: center;">
+                    </div>
+                    <span class="setting-hint" style="margin-left: 150px;">(Adjust using 'Show Thresholded' view)</span>
+                </div>
+
+                <div id="adaptive-threshold-settings" class="threshold-settings-group">
+                    <div class="setting">
+                        <label for="adaptive-blocksize-input">Neighborhood Size:</label>
+                        <input type="number" id="adaptive-blocksize-input" min="3" step="2" value="11" title="Size of the area around each pixel used to calculate local threshold (must be odd)">
+                        <span class="setting-hint">(Odd, e.g., 3, 5, 11...)</span>
+                    </div>
+                    <div class="setting">
+                        <label for="adaptive-c-input">Sensitivity (C):</label>
+                        <input type="number" id="adaptive-c-input" step="1" value="2" title="Constant subtracted from the local mean. Higher values make detection less sensitive.">
+                        <span class="setting-hint">(Fine-tunes adaptive)</span>
+                    </div>
+                </div>
+
+                <div class="setting">
+                    <label for="min-sprite-size-slider">Min Sprite Size:</label>
+                    <input type="range" id="min-sprite-size-slider" min="1" max="500" value="10" title="Ignore detected shapes smaller than this pixel area">
+                    <input type="number" id="min-sprite-size-number-input" min="1" max="5000" value="10" style="width: 60px; text-align: center;">
+                    <span class="setting-hint">(pixels area)</span>
+                </div>
+
+                <fieldset>
+                    <legend>Debugging Views & Overlays</legend>
+                    <label><input type="checkbox" id="show-grayscale-checkbox" name="debug-view" title="Show the image converted to grayscale"> Grayscale</label>
+                    <label><input type="checkbox" id="show-threshold-checkbox" name="debug-view" title="Show the result of the background removal (thresholding)"> Thresholded</label>
+                    <label><input type="checkbox" id="show-ccl-checkbox" name="debug-view" title="Show each detected sprite area with a unique color (Connected Component Labels)"> CCL IDs</label>
+                    <label><input type="checkbox" id="show-bboxes-checkbox" name="debug-overlay" title="Show blue bounding boxes around detected sprites (enable for editing)"> Sprite Boxes</label>
+                </fieldset>
+
+                <div class="action-row" style="margin-top: 20px; display: flex; align-items: center; gap: 15px; flex-wrap: wrap;">
+                    <button id="process-button" title="Apply settings and find sprite boundaries">Detect Sprites</button>
+                    <div id="processing-status">Upload an image and adjust settings to start.</div>
+                </div>
             </div>
         </section>
 
-        <section id="settings-section">
-            <h2>2. Detection Settings & Actions</h2>
-            <div class="setting">
-                <label for="threshold-type-select">Background Removal Method:</label>
-                <select id="threshold-type-select" title="Choose how to separate sprites from the background">
-                    <option value="manual" selected>Manual Threshold</option>
-                    <option value="adaptive-mean">Adaptive Threshold (Mean)</option>
-                </select>
-                <span class="setting-hint">(Try Adaptive if lighting is uneven)</span>
-            </div>
-
-            <div class="setting">
-                <label for="use-transparency-checkbox">Use Transparency:</label>
-                <input type="checkbox" id="use-transparency-checkbox" checked title="Treat fully transparent pixels as background">
-                <span class="setting-hint">(Treats transparent areas as background)</span>
-            </div>
-
-            <div id="manual-threshold-settings" class="threshold-settings-group visible">
-                <div class="setting">
-                    <label for="threshold-slider">Threshold Level:</label>
-                    <input type="range" id="threshold-slider" min="0" max="255" value="128" title="Adjust sensitivity for background removal (lower = more sensitive)">
-                    <input type="number" id="threshold-number-input" min="0" max="255" value="128" style="width: 60px; text-align: center;">
-                </div>
-                <span class="setting-hint" style="margin-left: 190px;">Adjust until sprites are white and background is black in 'Show Thresholded' view.</span>
-            </div>
-
-            <div id="adaptive-threshold-settings" class="threshold-settings-group">
-                <div class="setting">
-                    <label for="adaptive-blocksize-input">Neighborhood Size:</label>
-                    <input type="number" id="adaptive-blocksize-input" min="3" step="2" value="11" title="Size of the area around each pixel used to calculate local threshold (must be odd)">
-                    <span class="setting-hint">(Must be odd, e.g., 3, 5, 11...)</span>
-                </div>
-                <div class="setting">
-                    <label for="adaptive-c-input">Sensitivity (C):</label>
-                    <input type="number" id="adaptive-c-input" step="1" value="2" title="Constant subtracted from the local mean. Higher values make detection less sensitive.">
-                    <span class="setting-hint">(Adjust this fine-tunes the adaptive threshold)</span>
-                </div>
-            </div>
-
-            <div class="setting">
-                <label for="min-sprite-size-slider">Minimum Sprite Size:</label>
-                <input type="range" id="min-sprite-size-slider" min="1" max="500" value="10" title="Ignore detected shapes smaller than this pixel area">
-                <input type="number" id="min-sprite-size-number-input" min="1" max="5000" value="10" style="width: 60px; text-align: center;">
-                <span class="setting-hint">(pixels area)</span>
-            </div>
-
-            <fieldset>
-                <legend>Debugging Views & Overlays</legend>
-                <label><input type="checkbox" id="show-grayscale-checkbox" name="debug-view" title="Show the image converted to grayscale"> Show Grayscale</label>
-                <label><input type="checkbox" id="show-threshold-checkbox" name="debug-view" title="Show the result of the background removal (thresholding)"> Show Thresholded</label>
-                <label><input type="checkbox" id="show-ccl-checkbox" name="debug-view" title="Show each detected sprite area with a unique color (Connected Component Labels)"> Show CCL IDs</label>
-                <label><input type="checkbox" id="show-bboxes-checkbox" name="debug-overlay" title="Show blue bounding boxes around detected sprites (enable for editing)"> Show Sprite Boxes</label>
-            </fieldset>
-
-            <div class="action-row" style="margin-top: 20px; display: flex; align-items: center; gap: 15px; flex-wrap: wrap;">
-                <button id="process-button" title="Apply settings and find sprite boundaries">Detect Sprites</button>
-                <div id="processing-status">Upload an image and adjust settings to start.</div>
-            </div>
-        </section>
-
+        <!-- Editing Tools Section (Remains Separate) -->
         <section id="editing-tools-section" style="display: none;">
             <h2>3. Sprite Editing Tools</h2> 
             <div id="edit-toolbar">
@@ -115,6 +113,7 @@
             <div id="editing-status">Mode: PAN. Click and drag to pan, use wheel or buttons to zoom.</div>
         </section>
 
+        <!-- Extracted Sprites Section (Remains Separate) -->
         <section id="extracted-sprites-section" style="display: none;">
             <h2>4. Manage Sprites for Sheet</h2>
 
@@ -151,6 +150,7 @@
             </div>
         </section>
 
+        <!-- Spritesheet Generation Section (Remains Separate) -->
         <section id="spritesheet-section">
             <h2>5. Generate & Download Spritesheet</h2> 
             <fieldset>
@@ -164,6 +164,7 @@
                     <input type="number" id="padding-input" min="0" value="2" title="Space (in pixels) around each sprite *within* its cell">
                     <span class="setting-hint">(px)</span>
                 </div>
+                <!-- Cell Size Inputs -->
                 <div class="setting">
                     <label for="cell-width-input">Cell Width:</label>
                     <input type="number" id="cell-width-input" min="1" placeholder="Auto" title="Width of each grid cell (pixels). Leave empty for automatic sizing based on largest sprite + padding.">
@@ -176,6 +177,7 @@
                     <span class="setting-hint">(px)</span>
                 </div>
                 <div class="setting-hint" style="margin-left: 190px;">(Leave Cell Width/Height empty to auto-size based on largest selected sprite and padding.)</div>
+                <!-- END Cell Size Inputs -->
 
                 <div class="setting">
                     <label for="align-h-select">Horizontal Align:</label>
@@ -211,102 +213,9 @@
     <dialog id="help-dialog" class="help-modal">
         <button id="help-close-button" class="help-close-btn" title="Close Help">&times;</button>
         <h2>Spritcher Help Guide</h2>
-        <article class="help-content">
-            <section>
-                <h3>1. Upload Image</h3>
-                <p>Click the "Choose File" button or drag and drop an image file (PNG, JPG, GIF etc.) onto the page. The image will appear in the preview area.</p>
-                <p><strong>Zoom/Pan:</strong> Use the <code>+</code> and <code>-</code> buttons or your mouse wheel to zoom in/out on the preview. Click and drag on the preview (while in Pan/Zoom mode) to move the image around.</p>
-            </section>
-
-            <section>
-                <h3>2. Detection Settings</h3>
-                <p>These settings control how Spritcher separates sprites from the background.</p>
-                <ul>
-                    <li><strong>Background Removal Method:</strong>
-                        <ul>
-                            <li><strong>Manual Threshold:</strong> Good for images with a uniform background color. Adjust the slider/number until the sprites are clearly white and the background is black in the "Show Thresholded" debug view. Lower values are more sensitive (more white).</li>
-                            <li><strong>Adaptive Threshold (Mean):</strong> Better for images with uneven lighting or gradients. It calculates the threshold locally for different parts of the image. Adjust 'Neighborhood Size' (odd numbers like 3, 5, 11...) and 'Sensitivity (C)' to fine-tune.</li>
-                        </ul>
-                    </li>
-                    <li><strong>Use Transparency:</strong> If checked (default), fully transparent pixels (alpha = 0) in the original image will always be treated as background, regardless of the threshold settings. Uncheck if you need to detect shapes within partially transparent areas based on color alone.</li>
-                    <li><strong>Minimum Sprite Size:</strong> Sets the minimum pixel area for a detected shape to be considered a sprite. Increase this to ignore small noise or unwanted artifacts.</li>
-                    <li><strong>Debugging Views & Overlays:</strong>
-                        <ul>
-                            <li><strong>Show Grayscale:</strong> Displays the image converted to black and white. If 'Use Transparency' is checked, originally transparent areas will remain transparent (or appear black) in this view.</li>
-                            <li><strong>Show Thresholded:</strong> Shows the black and white result of the background removal. This is crucial for tuning threshold settings. Sprites should be white, background black. Transparency is factored in here if enabled.</li>
-                            <li><strong>Show CCL IDs:</strong> Assigns a unique color to each distinct detected shape (blob). Useful for seeing how shapes are grouped.</li>
-                            <li><strong>Show Sprite Boxes:</strong> Draws blue boxes around the detected sprites. Enable this to use the editing tools.</li>
-                        </ul>
-                    </li>
-                </ul>
-                <p><strong>Detect Sprites Button:</strong> Click this button (located at the bottom of the settings section) after adjusting settings. Spritcher will apply the processing steps and identify potential sprite boundaries based on your settings.</p>
-                <p>The found sprites will appear in the "Available Sprites" panel below, and blue boxes will appear on the image preview if "Show Sprite Boxes" is checked.</p>
-            </section>
-
-            <section>
-                <h3>3. Sprite Editing Tools (Requires 'Show Sprite Boxes' enabled)</h3>
-                <p>Use these tools to refine the automatically detected sprite boundaries.</p>
-                <ul>
-                    <li><strong>Pan/Zoom:</strong> (Default mode) Click and drag to pan the image, use the mouse wheel or zoom buttons to zoom.</li>
-                    <li><strong>Select:</strong> Click on a blue sprite box in the preview to select it. Selected boxes turn brighter blue. Click empty space to deselect.</li>
-                    <li><strong>Edit Bounds:</strong> First, <strong>Select</strong> a sprite. Then switch to this mode. Drag the small green handles that appear on the selected box to resize its boundaries.</li>
-                    <li><strong>Add Box:</strong> Click and drag directly on the image preview to draw a new rectangular sprite box. Useful if a sprite wasn't detected automatically.</li>
-                    <li><strong>Delete Selected:</strong> First, <strong>Select</strong> a sprite. Then click this button to remove its box entirely. This removes it from detection results and any selection lists.</li>
-                </ul>
-                <p><em>Note:</em> Editing tools only affect sprites detected in the *currently* loaded image.</p>
-            </section>
-
-            <section>
-                <h3>4. Manage Sprites for Sheet</h3>
-                <p>This section lets you choose which detected sprites (potentially from multiple uploaded images) will be included in the final spritesheet.</p>
-                <ul>
-                    <li><strong>Available Sprites:</strong> Shows previews of sprites detected in the <em>most recently processed image</em>.
-                        <ul>
-                            <li>Click a sprite preview here to add it to the 'Selected for Sheet' panel.</li>
-                            <li>Sprites already selected are dimmed.</li>
-                            <li>"Add All" adds all currently available sprites to the selection.</li>
-                        </ul>
-                    </li>
-                    <li><strong>Selected for Sheet:</strong> Shows previews of all sprites you've chosen to include in the final spritesheet (can be from different source images).
-                        <ul>
-                            <li>Click a sprite preview here to remove it from the selection.</li>
-                            <li>"Remove All" clears the entire selection.</li>
-                            <li><strong>Drag and Drop:</strong> Click and drag a sprite within this panel to change its order in the final spritesheet.</li>
-                            <li>The stats area shows size information about the selected sprites and helps determine layout settings.</li>
-                        </ul>
-                    </li>
-                </ul>
-            </section>
-
-            <section>
-                <h3>5. Generate & Download Spritesheet</h3>
-                <p>Configure the layout of your final spritesheet using the selected sprites.</p>
-                <ul>
-                    <li><strong>Columns:</strong> How many sprites wide the sheet should be.</li>
-                    <li><strong>Sprite Padding:</strong> Empty space (in pixels) added <em>inside</em> each sprite's cell, around the sprite itself.</li>
-                    <li><strong>Cell Width / Cell Height:</strong> Defines the exact size of each grid cell.
-                        <ul>
-                            <li>Leave empty (or use "Use Recommended") to automatically size cells based on the largest selected sprite plus padding.</li>
-                            <li>Enter specific values to force a uniform cell size. Sprites larger than the content area (Cell Size - Padding) will be scaled down to fit.</li>
-                        </ul>
-                    </li>
-                    <li><strong>Horizontal/Vertical Align:</strong> How sprites are positioned within their cell's content area if they are smaller than the available space.</li>
-                </ul>
-                <p>Click "Generate Spritesheet" to create the preview based on your selected sprites and layout settings. Once generated, click "Download Spritesheet" to save it as a PNG file.</p>
-            </section>
-
-            <section>
-                <h3>Tips</h3>
-                <ul>
-                    <li>Use the "Show Thresholded" view extensively to fine-tune the threshold settings – it's the most critical step for good detection.</li>
-                    <li>If sprites are connected, try increasing the threshold value slightly (manual) or adjusting Adaptive settings.</li>
-                    <li>If parts of sprites are missing, try decreasing the threshold value (manual).</li>
-                    <li>Enable "Use Transparency" if your image has a transparent background for potentially cleaner separation.</li>
-                    <li>Use the "Add Box" and "Edit Bounds" tools to manually fix detection errors.</li>
-                    <li>You can upload multiple images, detect sprites in each, and add desired sprites from each image to the "Selected for Sheet" panel before generating the final combined spritesheet.</li>
-                </ul>
-            </section>
-        </article>
+        <div id="help-content-container">
+            <p>Loading help content...</p>
+        </div>
     </dialog>
 
     <script type="importmap">
