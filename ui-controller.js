@@ -9,7 +9,8 @@ import { initEditingController, resetEditingOnLoad } from 'editing-controller';
 import { updateEditModeUI } from 'mode-controller';
 import { initDebugController, updateDebugView, updateDebugOverlays, clearOverlays } from 'debug-controller';
 import { initThemeController } from 'theme-controller';
-import { initExtractedSpritesController, clearExtractedSpritesDisplay, displayExtractedSprites, updateButtonStates as updateExtractedSpritesButtons, updateSpriteStats } from 'extracted-sprites-controller';
+import { initExtractedSpritesController, clearExtractedSpritesDisplay, displayExtractedSprites } from 'extracted-sprites-controller';
+import { updateButtonStates as updateExtractedSpritesButtons, updateSpriteStats } from './sprite-stats.js';
 import { initHelpController } from 'help-controller';
 
 // --- Initialization ---

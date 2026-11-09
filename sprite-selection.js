@@ -1,7 +1,8 @@
 import { elements } from 'dom-elements';
 import { appState, addSpriteToSelection, removeSpriteFromSelection, clearSelectedSprites, addAllAvailableSpritesToSelection } from 'state';
-import { clearGeneratedSpritesheet } from 'spritesheet-generator';
-import { displayExtractedSprites, updateSelectionCounts, updateSpriteStats, updateButtonStates } from './sprite-stats.js';
+import { clearGeneratedSpritesheet } from './spritesheet-controller.js';
+import { displayExtractedSprites } from './extracted-sprites-controller.js';
+import { updateSelectionCounts, updateSpriteStats, updateButtonStates } from './sprite-stats.js';
 import { displayAvailableSprites, displaySelectedSprites } from './sprite-renderer.js';
 
 /**

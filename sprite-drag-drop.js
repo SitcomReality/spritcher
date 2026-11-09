@@ -1,6 +1,7 @@
 import { elements } from 'dom-elements';
 import { reorderSelectedSprites } from 'state';
-import { displaySelectedSprites, updateSpriteStats } from './extracted-sprites-controller';
+import { displaySelectedSprites } from './sprite-renderer.js';
+import { updateSpriteStats } from './sprite-stats.js';
 import { clearGeneratedSpritesheet } from 'spritesheet-controller';
 
 // Drag and Drop State

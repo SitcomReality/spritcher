@@ -1,7 +1,7 @@
 import { elements } from 'dom-elements';
 import { appState, addSpriteToSelection, removeSpriteFromSelection, clearSelectedSprites, addAllAvailableSpritesToSelection, reorderSelectedSprites } from 'state';
-import { clearGeneratedSpritesheet } from 'spritesheet-generator';
-import { createPreviewItemElement, displayAvailableSprites, displaySelectedSprites } from './sprite-renderer.js';
+import { clearGeneratedSpritesheet } from './spritesheet-controller.js';
+import { createPreviewItemElement, displayAvailableSprites, displaySelectedSprites, previewSourceCanvasCache } from './sprite-renderer.js';
 import { handleAvailableSpriteClick, handleSelectedSpriteClick, handleAddAllAvailable, handleRemoveAllSelected } from './sprite-selection.js';
 import { initDragAndDrop } from './sprite-drag-drop.js';
 import { updateSpriteStats, updateSelectionCounts, updateButtonStates } from './sprite-stats.js';
@@ -33,7 +33,6 @@ export function displayExtractedSprites() {
  */
 export function clearExtractedSpritesDisplay() {
     // Clear cache when re-rendering previews
-    const { previewSourceCanvasCache } = require('./sprite-renderer.js');
     previewSourceCanvasCache.clear();
     
     if (elements.availableSpritesDisplayContainer) {

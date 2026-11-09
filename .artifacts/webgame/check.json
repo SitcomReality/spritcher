@@ -1,0 +1,45 @@
+{
+  "ok": false,
+  "name": "spritcher",
+  "cwd": "/home/reality/Projects/spritcher",
+  "configPath": null,
+  "startedAt": "2026-11-09T16:03:13.725Z",
+  "durationMs": 223,
+  "counts": {
+    "files": 39,
+    "js": 27,
+    "html": 2,
+    "css": 9,
+    "json": 0,
+    "svg": 0,
+    "imports": 8,
+    "assets": 11,
+    "external": 1,
+    "bareImports": 88
+  },
+  "errors": [
+    {
+      "file": "help-content.html",
+      "line": 92,
+      "rule": "external",
+      "message": "external URL https://2zsb0vtyjs1exni5pme1.c.websim.com/help-content.html?v=47&t=1775382242982 (help-content.html:92); vendor it locally or add it to externalAllowlist",
+      "source": "<iframe"
+    }
+  ],
+  "warnings": [],
+  "external": [
+    {
+      "url": "https://2zsb0vtyjs1exni5pme1.c.websim.com/help-content.html?v=47&t=1775382242982",
+      "file": "help-content.html",
+      "line": 92,
+      "allowed": false
+    }
+  ],
+  "readiness": {
+    "explicit": false,
+    "hook": false
+  },
+  "reportPath": "/home/reality/Projects/spritcher/.artifacts/webgame/check.json",
+  "error": "help-content.html:92 external URL https://2zsb0vtyjs1exni5pme1.c.websim.com/help-content.html?v=47&t=1775382242982 (help-content.html:92); vendor it locally or add it to externalAllowlist",
+  "summary": "✗ spritcher — static checks\n  files: 39 (27 js, 2 html, 9 css, 0 json)\n  refs: 8 imports, 11 assets, 1 external\n  errors: 1, warnings: 0\n  ✗ help-content.html:92 external URL https://2zsb0vtyjs1exni5pme1.c.websim.com/help-content.html?v=47&t=1775382242982 (help-content.html:92); vendor it locally or add it to externalAllowlist\n  report: /home/reality/Projects/spritcher/.artifacts/webgame/check.json"
+}

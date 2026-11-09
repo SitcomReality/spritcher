@@ -2,7 +2,7 @@ import { elements } from 'dom-elements';
 import { appState, setGeneratedSpritesheet, clearGeneratedSpritesheetState } from 'state';
 import { generateSpritesheet, downloadCanvasAsPNG, calculateRecommendedLayout } from 'spritesheet-generator';
 import { disableAllControls } from 'ui-controller';
-import { updateSpriteStats } from 'extracted-sprites-controller';
+import { updateSpriteStats } from './sprite-stats.js';
 
 export function initSpritesheetController() {
     elements.gridColsInput.addEventListener('change', handleSpritesheetSettingsChange);
